@@ -40,11 +40,13 @@ struct ContentView: View {
     }
 
     private var promptPrefixColor: Color {
-        ColorMapper.parseColor(settingsManager.settings.promptPrefixColor, fallback: promptBodyColor)
+        ColorMapper.parseColor(
+            settingsManager.settings.promptPrefixColor, fallback: promptBodyColor)
     }
 
     private var promptSuffixColor: Color {
-        ColorMapper.parseColor(settingsManager.settings.promptSuffixColor, fallback: promptBodyColor)
+        ColorMapper.parseColor(
+            settingsManager.settings.promptSuffixColor, fallback: promptBodyColor)
     }
 
     private var textColor: Color {
@@ -88,7 +90,6 @@ struct ContentView: View {
                         if isFocused && !hasTriggeredDictation {
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                                 if isMainFieldFocused && !hasTriggeredDictation {
-                                    print("toggling")
                                     hasTriggeredDictation = true
                                     invokeDictation()
                                 }
@@ -146,14 +147,9 @@ struct ContentView: View {
         let key = settingsManager.settings.dictationKey
         let script: String
 
-        print("lee")
         if let keyCode = KeycodeMapper.keyCode(for: key) {
-            print("1")
-            print(keyCode)
             script = "tell application \"System Events\" to key code \(keyCode)"
         } else {
-            print("2")
-            print(key)
             script = "tell application \"System Events\" to keystroke \"\(key)\""
         }
 
