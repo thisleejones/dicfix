@@ -24,16 +24,34 @@ struct KeycodeMapper {
         "F19": 80,
         "F20": 90,  // Add more mappings as needed
         "'": 39,  // Apostrophe
-        "Control": 59,
-        "Option": 58,
-        "Command": 55,
-        "Shift": 56,
-        "LeftShift": 56,
-        "RightShift": 60,
-        "CapsLock": 57,
+    ]
+
+    private static let modifierMap: [String: CGEventFlags] = [
+        "Control": .maskControl,
+        "Option": .maskAlternate,
+        "Command": .maskCommand,
+        "Shift": .maskShift,
     ]
 
     static func keyCode(for name: String) -> CGKeyCode? {
         return keyMap.first { $0.key.caseInsensitiveCompare(name) == .orderedSame }?.value
+    }
+
+    static func modifierFlag(for name: String) -> CGEventFlags? {
+        return modifierMap.first { $0.key.caseInsensitiveCompare(name) == .orderedSame }?.value
+    }
+
+    static func modifierFlags(from string: String) -> CGEventFlags {
+        let modifierNames = string.split(separator: "|").map {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        var combinedFlags = CGEventFlags()
+        for name in modifierNames {
+            if let flag = modifierFlag(for: String(name)) {
+                combinedFlags.insert(flag)
+            }
+        }
+        return combinedFlags
     }
 }

@@ -89,4 +89,21 @@ class SettingsTests: XCTestCase {
         let updatedSettings = appDelegate.settingsManager.settings
         XCTAssertEqual(updatedSettings.dictationKey, "F12", "Dictation key should be updated by command-line argument")
     }
+
+    func testDictationKeyModsAndDelayAreOverriddenByCommandLine() {
+        // 1. Set the command-line arguments for the test.
+        appDelegate.commandLineArguments = [
+            "/path/to/app",
+            "--dictation-key-mods", "Command|Shift",
+            "--dictation-key-delay", "500ms"
+        ]
+
+        // 2. Trigger applicationDidFinishLaunching to parse the arguments.
+        appDelegate.applicationDidFinishLaunching(Notification(name: NSApplication.didFinishLaunchingNotification))
+
+        // 3. Check that the settings have been updated.
+        let updatedSettings = appDelegate.settingsManager.settings
+        XCTAssertEqual(updatedSettings.dictationKeyMods, "Command|Shift", "Dictation key mods should be updated by command-line argument")
+        XCTAssertEqual(updatedSettings.dictationKeyDelay, "500ms", "Dictation key delay should be updated by command-line argument")
+    }
 }

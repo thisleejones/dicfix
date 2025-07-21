@@ -54,6 +54,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             settingsManager.settings.dictationKey = dictationKeyValue
         }
 
+        if let dictationKeyModsIndex = arguments.firstIndex(of: "--dictation-key-mods"),
+            arguments.indices.contains(dictationKeyModsIndex + 1)
+        {
+            let dictationKeyModsValue = arguments[dictationKeyModsIndex + 1]
+            settingsManager.settings.dictationKeyMods = dictationKeyModsValue
+        }
+
+        if let dictationKeyDelayIndex = arguments.firstIndex(of: "--dictation-key-delay"),
+            arguments.indices.contains(dictationKeyDelayIndex + 1)
+        {
+            let dictationKeyDelayValue = arguments[dictationKeyDelayIndex + 1]
+            settingsManager.settings.dictationKeyDelay = dictationKeyDelayValue
+        }
+
         if let promptIndex = arguments.firstIndex(of: "--prompt"),
             arguments.indices.contains(promptIndex + 1)
         {

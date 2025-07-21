@@ -22,6 +22,8 @@ struct AppSettings {
     var placeholderColor: String
     var target: String
     var dictationKey: String
+    var dictationKeyMods: String
+    var dictationKeyDelay: String
 
     // The original, sensible defaults
     static func defaultSettings() -> AppSettings {
@@ -43,7 +45,9 @@ struct AppSettings {
             placeholder: "...",
             placeholderColor: "gray",
             target: "paste",
-            dictationKey: "F5"
+            dictationKey: "F5",
+            dictationKeyMods: "",
+            dictationKeyDelay: "200ms"
         )
     }
 }
@@ -69,6 +73,8 @@ private struct CodableSettings: Codable {
     var placeholderColor: String?
     var target: String?
     var dictationKey: String?
+    var dictationKeyMods: String?
+    var dictationKeyDelay: String?
 }
 
 class SettingsManager: ObservableObject {
@@ -153,7 +159,9 @@ class SettingsManager: ObservableObject {
             placeholder: loaded.placeholder ?? defaults.placeholder,
             placeholderColor: loaded.placeholderColor ?? defaults.placeholderColor,
             target: loaded.target ?? defaults.target,
-            dictationKey: loaded.dictationKey ?? defaults.dictationKey
+            dictationKey: loaded.dictationKey ?? defaults.dictationKey,
+            dictationKeyMods: loaded.dictationKeyMods ?? defaults.dictationKeyMods,
+            dictationKeyDelay: loaded.dictationKeyDelay ?? defaults.dictationKeyDelay
         )
     }
 
