@@ -13,6 +13,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // Access our new settings manager
     let settingsManager = SettingsManager.shared
 
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        // Force disable verbose logging from the Input Method Kit
+        setenv("OS_ACTIVITY_MODE", "disable", 1)
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Check for command-line arguments before doing anything else
         let arguments = commandLineArguments
@@ -23,7 +28,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             arguments.indices.contains(textIndex + 1)
         {
             let text = arguments[textIndex + 1]
-            print("Sending text directly to target and terminating.")
             target.send(text: text)
             NSApp.terminate(nil)
             return  // Exit before showing any UI
@@ -34,7 +38,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         {
             let placeholderValue = arguments[placeholderIndex + 1]
             settingsManager.settings.placeholder = placeholderValue
-            print("Overriding placeholder with value from command line: \"\(placeholderValue)\"")
         }
 
         if let placeholderColorIndex = arguments.firstIndex(of: "--placeholder-color"),
@@ -42,9 +45,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         {
             let placeholderColorValue = arguments[placeholderColorIndex + 1]
             settingsManager.settings.placeholderColor = placeholderColorValue
-            print(
-                "Overriding placeholderColor with value from command line: \"\(placeholderColorValue)\""
-            )
         }
 
         if let dictationKeyIndex = arguments.firstIndex(of: "--dictation-key"),
@@ -52,9 +52,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         {
             let dictationKeyValue = arguments[dictationKeyIndex + 1]
             settingsManager.settings.dictationKey = dictationKeyValue
-            print(
-                "Overriding dictationKey with value from command line: \"\(dictationKeyValue)\""
-            )
         }
 
         if let promptIndex = arguments.firstIndex(of: "--prompt"),
@@ -62,7 +59,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         {
             let promptValue = arguments[promptIndex + 1]
             settingsManager.settings.promptBody = promptValue
-            print("Overriding promptBody with value from command line: \"\(promptValue)\"")
         }
 
         // Hide the Dock icon
@@ -142,12 +138,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         case "stdout":
             return StdoutTarget()
         default:
-            print("Unknown target '\(name)'. Using default (clipboard).")
             return ClipboardTarget()
         }
     }
 
-   
     func applicationWillTerminate(_ notification: Notification) {
         // Save window frame to our JSON file on quit, only if it has changed
         if let window = self.window {

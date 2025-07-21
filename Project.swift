@@ -17,6 +17,9 @@ let project = Project(
                     "This app uses accessibility features to capture dictation.",
                 "NSAppleEventsUsageDescription": "This app uses Apple Events to trigger dictation.",
                 "LSUIElement": "YES",  // This hides the app from the Dock
+                "LSEnvironment": [
+                    "OS_ACTIVITY_MODE": "disable"
+                ],
             ]),
             sources: ["Sources/**"],
             resources: [

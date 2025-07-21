@@ -4,17 +4,17 @@
 PROJECT_NAME = dicfix
 SCHEME = dicfix
 PROJECT = $(PROJECT_NAME).xcodeproj
-CONFIGURATION = Debug
+CONFIGURATION ?= Debug
 BUILD_DIR = build
 INSTALL_DIR ?= /Applications
 EXECUTABLE_PATH = "$(BUILD_DIR)/Build/Products/$(CONFIGURATION)/$(PROJECT_NAME).app/Contents/MacOS/$(PROJECT_NAME)"
 
-.PHONY: all build clean run install lint test
+.PHONY: all build clean run install lint test release
 
 all: build
 
 build:
-	@echo "Building $(PROJECT_NAME)..."
+	@echo "Building $(PROJECT_NAME) with $(CONFIGURATION) configuration..."
 	@xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION) -derivedDataPath $(BUILD_DIR) build
 
 clean:
@@ -28,11 +28,15 @@ clean:
 
 run: build
 	@echo "Running $(PROJECT_NAME)..."
-	@$(EXECUTABLE_PATH) $(ARGS)
+	@OS_ACTIVITY_MODE=disable $(EXECUTABLE_PATH) $(ARGS)
 
 install: build
 	@echo "Installing $(PROJECT_NAME) to $(INSTALL_DIR)..."
 	@cp -R "$(BUILD_DIR)/Build/Products/$(CONFIGURATION)/$(PROJECT_NAME).app" "$(INSTALL_DIR)/"
+
+release:
+	@echo "Building release version of $(PROJECT_NAME)..."
+	@$(MAKE) build CONFIGURATION=Release
 
 lint:
 	@echo "Linting..."
