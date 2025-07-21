@@ -141,7 +141,7 @@ This example binds `Shift+Command+d` to launch the app:
 [keyboard]
 bindings = [
   # Add this binding to launch DicFix
-  { key = "d", mods = "Shift|Command", command = { program = "open", args = ["-a", "dicfix"] } }
+  { key = "d", mods = "Shift|Command", command = { program = "/Applications/dicfix.app/Contents/MacOS/dicfix", args = ["--target=paste"] } }
 ]
 ```
 
