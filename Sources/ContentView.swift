@@ -1,11 +1,6 @@
 import AppKit
 import SwiftUI
 
-// Add the missing color definition
-extension Color {
-    static let magenta = Color(red: 1.0, green: 0.0, blue: 1.0)
-}
-
 struct ContentView: View {
     @EnvironmentObject var settingsManager: SettingsManager
     @State private var text = ""
@@ -39,101 +34,25 @@ struct ContentView: View {
         }
     }
 
-    // Centralized color parsing logic
-    private func parseColor(_ colorString: String, fallback: Color = .gray) -> Color {
-        if colorString.hasPrefix("#") {
-            let hex = String(colorString.dropFirst())
-            if let (red, green, blue) = parseHex(hex) {
-                return Color(red: red, green: green, blue: blue)
-            }
-        } else {
-            if let namedColor = getNamedColor(colorString) {
-                return namedColor
-            }
-        }
-        // Fallback if parsing fails or color string is empty
-        if !colorString.isEmpty {
-            print("Invalid color '\(colorString)'. Falling back.")
-        }
-        return fallback
-    }
-
-    // Helper to handle named colors
-    private func getNamedColor(_ name: String) -> Color? {
-        let colorMap: [String: Color] = [
-            // Standard Colors
-            "red": .red, "green": .green, "blue": .blue, "white": .white,
-            "black": .black, "gray": .gray, "cyan": .cyan, "magenta": .magenta,
-            "yellow": .yellow, "orange": .orange, "purple": .purple, "pink": .pink,
-            // SwiftUI Semantic Colors
-            "primary": .primary, "secondary": .secondary, "accentcolor": .accentColor,
-            // NSColor Semantic Colors
-            "labelcolor": Color(nsColor: .labelColor),
-            "secondarylabelcolor": Color(nsColor: .secondaryLabelColor),
-            "tertiarylabelcolor": Color(nsColor: .tertiaryLabelColor),
-            "windowbackgroundcolor": Color(nsColor: .windowBackgroundColor),
-            "controlbackgroundcolor": Color(nsColor: .controlBackgroundColor),
-            "lightgray": Color(nsColor: .lightGray), "darkgray": Color(nsColor: .darkGray),
-            // NSColor System Colors
-            "systemred": Color(nsColor: .systemRed), "systemgreen": Color(nsColor: .systemGreen),
-            "systemblue": Color(nsColor: .systemBlue),
-            "systemorange": Color(nsColor: .systemOrange),
-            "systemyellow": Color(nsColor: .systemYellow),
-            "systempurple": Color(nsColor: .systemPurple),
-            "systempink": Color(nsColor: .systemPink), "systemteal": Color(nsColor: .systemTeal),
-            "systemindigo": Color(nsColor: .systemIndigo),
-            "systemgray": Color(nsColor: .systemGray),
-        ]
-        return colorMap[name.lowercased()]
-    }
-
-    // Utility to parse a 3 or 6 digit hex string
-    private func parseHex(_ hex: String) -> (Double, Double, Double)? {
-        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
-
-        var rgb: UInt64 = 0
-        Scanner(string: hexSanitized).scanHexInt64(&rgb)
-
-        let red: Double
-        let green: Double
-        let blue: Double
-        if hexSanitized.count == 6 {
-            red = Double((rgb & 0xFF0000) >> 16) / 255.0
-            green = Double((rgb & 0x00FF00) >> 8) / 255.0
-            blue = Double(rgb & 0x0000FF) / 255.0
-        } else if hexSanitized.count == 3 {
-            let redShort = Double((rgb & 0xF00) >> 8)
-            let greenShort = Double((rgb & 0x0F0) >> 4)
-            let blueShort = Double(rgb & 0x00F)
-            red = (redShort * 16 + redShort) / 255.0
-            green = (greenShort * 16 + greenShort) / 255.0
-            blue = (blueShort * 16 + blueShort) / 255.0
-        } else {
-            return nil
-        }
-        return (red, green, blue)
-    }
-
     // Color properties with fallback logic
     private var promptBodyColor: Color {
-        parseColor(settingsManager.settings.promptBodyColor, fallback: .gray)
+        ColorMapper.parseColor(settingsManager.settings.promptBodyColor, fallback: .gray)
     }
 
     private var promptPrefixColor: Color {
-        parseColor(settingsManager.settings.promptPrefixColor, fallback: promptBodyColor)
+        ColorMapper.parseColor(settingsManager.settings.promptPrefixColor, fallback: promptBodyColor)
     }
 
     private var promptSuffixColor: Color {
-        parseColor(settingsManager.settings.promptSuffixColor, fallback: promptBodyColor)
+        ColorMapper.parseColor(settingsManager.settings.promptSuffixColor, fallback: promptBodyColor)
     }
 
     private var textColor: Color {
-        parseColor(settingsManager.settings.textColor, fallback: .white)
+        ColorMapper.parseColor(settingsManager.settings.textColor, fallback: .white)
     }
 
     private var placeholderColor: Color {
-        parseColor(settingsManager.settings.placeholderColor, fallback: .gray)
+        ColorMapper.parseColor(settingsManager.settings.placeholderColor, fallback: .gray)
     }
 
     var body: some View {
