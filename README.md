@@ -82,6 +82,8 @@ The next time you launch DicFix, it will create and read its `settings.json` and
 -   **Colors**:
     -   `promptPrefixColor`, `promptBodyColor`, `promptSuffixColor`: The color for each part of the prompt.
     -   `textColor`: The color of the dictated text in the text field.
+    -   `placeholder`: The placeholder text to display in the input field when it is empty.
+    -   `placeholderColor`: The color of the placeholder text.
     -   **Color Formats**: Colors can be specified using several formats:
         -   **Hex RGB**: `"#BF616B"`
         -   **Named Web Colors**: `"red"`, `"cyan"`, `"magenta"` (lowercase)
@@ -107,6 +109,8 @@ dicfix --prompt "Speak now:"
 -   `--target <target>`: Overrides the `target` from `settings.json`. Valid targets are `clipboard`, `paste`, `keystroke`, and `stdout`.
 -   `--text <string>`: Immediately sends the provided string to the specified target without showing the dictation window.
 -   `--prompt <string>`: Overrides the `promptBody` setting for the current run.
+-   `--placeholder <string>`: Overrides the `placeholder` text for the current run.
+-   `--placeholder-color <color>`: Overrides the `placeholderColor` for the current run.
 
 ## Integration with Alacritty
 
