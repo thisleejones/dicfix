@@ -186,4 +186,4 @@ After adding the alias, restart your terminal or source your configuration file 
 
 ## A Note on the Name
 
-Yes, the name is a bit cheesy. I originally wanted to call it `Chatty`, but the name was taken. Then I considered `Mumble`, but that's a popular voice chat application. So, `DicFix` it is.
+Yes, the name is a bit cheesy. I originally wanted to call it `Chatty`, but the name was taken. Then I considered `Mumble`, but that's a popular voice chat application. So, `DicFix` it is. If you'd like to change it, the project name is defined in `Project.swift` and can be easily updated.
