@@ -30,7 +30,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if let placeholderIndex = arguments.firstIndex(of: "--placeholder"),
-           arguments.indices.contains(placeholderIndex + 1)
+            arguments.indices.contains(placeholderIndex + 1)
         {
             let placeholderValue = arguments[placeholderIndex + 1]
             settingsManager.settings.placeholder = placeholderValue
@@ -38,7 +38,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if let placeholderColorIndex = arguments.firstIndex(of: "--placeholder-color"),
-           arguments.indices.contains(placeholderColorIndex + 1)
+            arguments.indices.contains(placeholderColorIndex + 1)
         {
             let placeholderColorValue = arguments[placeholderColorIndex + 1]
             settingsManager.settings.placeholderColor = placeholderColorValue
@@ -47,8 +47,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             )
         }
 
+        if let dictationKeyIndex = arguments.firstIndex(of: "--dictation-key"),
+            arguments.indices.contains(dictationKeyIndex + 1)
+        {
+            let dictationKeyValue = arguments[dictationKeyIndex + 1]
+            settingsManager.settings.dictationKey = dictationKeyValue
+            print(
+                "Overriding dictationKey with value from command line: \"\(dictationKeyValue)\""
+            )
+        }
+
         if let promptIndex = arguments.firstIndex(of: "--prompt"),
-           arguments.indices.contains(promptIndex + 1)
+            arguments.indices.contains(promptIndex + 1)
         {
             let promptValue = arguments[promptIndex + 1]
             settingsManager.settings.promptBody = promptValue
@@ -105,11 +115,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // The most basic and standard way to show the window and make it active.
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
-
-        // Invoke dictation after a short delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.invokeDictation()
-        }
     }
 
     func getTarget(args: [String]? = nil) -> Target {
@@ -117,7 +122,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let targetName: String
         // Command-line argument takes precedence
         if let targetIndex = arguments.firstIndex(of: "--target"),
-           arguments.indices.contains(targetIndex + 1) {
+            arguments.indices.contains(targetIndex + 1)
+        {
             targetName = arguments[targetIndex + 1].lowercased()
         } else {
             targetName = settingsManager.settings.target.lowercased()
@@ -141,21 +147,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    func invokeDictation() {
-        let scriptSource = """
-            tell application "System Events"
-                key code 40 using control down
-            end tell
-            """
-        if let script = NSAppleScript(source: scriptSource) {
-            var error: NSDictionary?
-            script.executeAndReturnError(&error)
-            if let error = error {
-                print("Error invoking dictation: \(error)")
-            }
-        }
-    }
-
+   
     func applicationWillTerminate(_ notification: Notification) {
         // Save window frame to our JSON file on quit, only if it has changed
         if let window = self.window {

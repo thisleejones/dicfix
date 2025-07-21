@@ -74,4 +74,19 @@ class SettingsTests: XCTestCase {
         XCTAssertEqual(updatedSettings.placeholder, "new placeholder", "Placeholder should be updated by command-line argument")
         XCTAssertEqual(updatedSettings.placeholderColor, "blue", "Placeholder color should be updated by command-line argument")
     }
+
+    func testDictationKeySettingIsOverriddenByCommandLine() {
+        // 1. Set the command-line arguments for the test.
+        appDelegate.commandLineArguments = [
+            "/path/to/app",
+            "--dictation-key", "F12"
+        ]
+
+        // 2. Trigger applicationDidFinishLaunching to parse the arguments.
+        appDelegate.applicationDidFinishLaunching(Notification(name: NSApplication.didFinishLaunchingNotification))
+
+        // 3. Check that the settings have been updated.
+        let updatedSettings = appDelegate.settingsManager.settings
+        XCTAssertEqual(updatedSettings.dictationKey, "F12", "Dictation key should be updated by command-line argument")
+    }
 }

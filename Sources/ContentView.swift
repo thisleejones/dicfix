@@ -11,6 +11,9 @@ struct ContentView: View {
     @State private var text = ""
     let target: Target
 
+    @State private var hasTriggeredDictation = false
+    @FocusState private var isMainFieldFocused: Bool
+
     init(target: Target) {
         self.target = target
     }
@@ -161,6 +164,18 @@ struct ContentView: View {
                     .foregroundColor(textColor)
                     .accentColor(textColor)
                     .font(appFont)
+                    .focused($isMainFieldFocused)
+                    .onChange(of: isMainFieldFocused) { isFocused in
+                        if isFocused && !hasTriggeredDictation {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                if isMainFieldFocused && !hasTriggeredDictation {
+                                    print("toggling")
+                                    hasTriggeredDictation = true
+                                    invokeDictation()
+                                }
+                            }
+                        }
+                    }
             }
             .padding(.vertical, 12)
             .padding(.trailing, 12)
@@ -168,7 +183,7 @@ struct ContentView: View {
         .background(Color.black.opacity(settingsManager.settings.opacity))
         .overlay(
             RoundedRectangle(cornerRadius: 14)
-                .stroke(Color.gray.opacity(0.7), lineWidth: 2)
+                .stroke(Color.gray.opacity(0.7), lineWidth: 4)
         )
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .onSubmit {
@@ -205,6 +220,30 @@ struct ContentView: View {
             }
         } catch {
             print("Failed to write to history: \(error.localizedDescription)")
+        }
+    }
+
+    func invokeDictation() {
+        let key = settingsManager.settings.dictationKey
+        let script: String
+
+        print("lee")
+        if let keyCode = KeycodeMapper.keyCode(for: key) {
+            print("1")
+            print(keyCode)
+            script = "tell application \"System Events\" to key code \(keyCode)"
+        } else {
+            print("2")
+            print(key)
+            script = "tell application \"System Events\" to keystroke \"\(key)\""
+        }
+
+        if let appleScript = NSAppleScript(source: script) {
+            var error: NSDictionary?
+            appleScript.executeAndReturnError(&error)
+            if let error = error {
+                print("Error invoking dictation: \(error)")
+            }
         }
     }
 }

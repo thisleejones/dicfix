@@ -4,6 +4,9 @@ DicFix is a lightweight macOS utility that provides a seamless dictation window 
 
 The motivation for this project was to use voice dictation with modern CLI tools, such as AI assistants (Claude, Gemini), where speaking a command or prompt can be more efficient than typing. DicFix bridges this gap by providing a simple, customizable pop-up that captures your speech and sends it to your desired target.
 
+> [!NOTE]
+> This project is a work in progress. Features related to hotkeys, keystroke delays, and modifier key support are still under active development and may change.
+
 ![DicFix Screenshot](screenshot.png)
 
 ## Features
@@ -61,7 +64,8 @@ The next time you launch DicFix, it will create and read its `settings.json` and
   "placeholderColor": "systemGray",
   "promptSuffix": "$ ",
   "windowWidth": 600,
-  "target": "paste"
+  "target": "paste",
+  "dictationKey": "F5"
 }
 ```
 
@@ -72,6 +76,8 @@ The next time you launch DicFix, it will create and read its `settings.json` and
     -   `"paste"`: Copies the text and then simulates a `Cmd+V` keystroke to paste it.
     -   `"keystroke"`: Simulates typing the text character by character. (Requires Accessibility permissions).
     -   `"stdout"`: Prints the text to standard output. This is useful for scripting.
+-   **`dictationKey`**: The key used to trigger dictation when the app launches.
+    -   See the **Supported Keycodes** section for available values.
 -   **Window & Appearance**:
     -   `windowX`, `windowY`: The screen coordinates for the window's top-left corner.
     -   `windowWidth`, `windowHeight`: The dimensions of the window.
@@ -104,6 +110,9 @@ dicfix --target paste --text "Hello, World!"
 
 # Override the prompt displayed in the UI
 dicfix --prompt "Speak now:"
+
+# Override the dictation key for this run
+dicfix --dictation-key "F12"
 ```
 
 ### Arguments
@@ -113,6 +122,14 @@ dicfix --prompt "Speak now:"
 -   `--prompt <string>`: Overrides the `promptBody` setting for the current run.
 -   `--placeholder <string>`: Overrides the `placeholder` text for the current run.
 -   `--placeholder-color <color>`: Overrides the `placeholderColor` for the current run.
+-   `--dictation-key <key>`: Overrides the `dictationKey` from `settings.json`.
+
+### Supported Keycodes
+
+The `dictationKey` option currently supports function keys `F1` through `F20`.
+
+> [!NOTE]
+> This feature is under active development. Support for key combinations with modifiers (e.g., Command, Shift, Control) is planned for a future release.
 
 ## Integration with Alacritty
 
