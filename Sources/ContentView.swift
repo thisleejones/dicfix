@@ -129,6 +129,10 @@ struct ContentView: View {
         parseColor(settingsManager.settings.textColor, fallback: .white)
     }
 
+    private var placeholderColor: Color {
+        parseColor(settingsManager.settings.placeholderColor, fallback: .gray)
+    }
+
     var body: some View {
         HStack(spacing: 0) {
             // Prompt composed of three parts
@@ -143,15 +147,23 @@ struct ContentView: View {
             .font(appFont)
             .padding(.leading, 12)
 
-            TextField("", text: textBinding)
-                .lineLimit(1)
-                .accessibilityIdentifier("mainField")
-                .textFieldStyle(PlainTextFieldStyle())
-                .foregroundColor(textColor)
-                .accentColor(textColor)
-                .font(appFont)
-                .padding(.vertical, 12)
-                .padding(.trailing, 12)
+            ZStack(alignment: .leading) {
+                if text.isEmpty {
+                    Text(settingsManager.settings.placeholder)
+                        .foregroundColor(placeholderColor)
+                        .font(appFont)
+                        .padding(.leading, 4)  // Align with TextField's internal padding
+                }
+                TextField("", text: textBinding)
+                    .lineLimit(1)
+                    .accessibilityIdentifier("mainField")
+                    .textFieldStyle(PlainTextFieldStyle())
+                    .foregroundColor(textColor)
+                    .accentColor(textColor)
+                    .font(appFont)
+            }
+            .padding(.vertical, 12)
+            .padding(.trailing, 12)
         }
         .background(Color.black.opacity(settingsManager.settings.opacity))
         .overlay(

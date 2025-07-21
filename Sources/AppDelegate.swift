@@ -9,12 +9,13 @@ class TransparentWindow: NSWindow {
 class AppDelegate: NSObject, NSApplicationDelegate {
     var window: NSWindow!
     var isTerminating = false
+    var commandLineArguments: [String] = CommandLine.arguments
     // Access our new settings manager
     let settingsManager = SettingsManager.shared
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Check for command-line arguments before doing anything else
-        let arguments = CommandLine.arguments
+        let arguments = commandLineArguments
         let target = getTarget(args: arguments)
 
         // If --text is provided, send the text and terminate immediately.
@@ -28,8 +29,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return  // Exit before showing any UI
         }
 
+        if let placeholderIndex = arguments.firstIndex(of: "--placeholder"),
+           arguments.indices.contains(placeholderIndex + 1)
+        {
+            let placeholderValue = arguments[placeholderIndex + 1]
+            settingsManager.settings.placeholder = placeholderValue
+            print("Overriding placeholder with value from command line: \"\(placeholderValue)\"")
+        }
+
+        if let placeholderColorIndex = arguments.firstIndex(of: "--placeholder-color"),
+           arguments.indices.contains(placeholderColorIndex + 1)
+        {
+            let placeholderColorValue = arguments[placeholderColorIndex + 1]
+            settingsManager.settings.placeholderColor = placeholderColorValue
+            print(
+                "Overriding placeholderColor with value from command line: \"\(placeholderColorValue)\""
+            )
+        }
+
         if let promptIndex = arguments.firstIndex(of: "--prompt"),
-            arguments.indices.contains(promptIndex + 1)
+           arguments.indices.contains(promptIndex + 1)
         {
             let promptValue = arguments[promptIndex + 1]
             settingsManager.settings.promptBody = promptValue
@@ -93,12 +112,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    func getTarget(args: [String] = CommandLine.arguments) -> Target {
+    func getTarget(args: [String]? = nil) -> Target {
+        let arguments = args ?? commandLineArguments
         let targetName: String
         // Command-line argument takes precedence
-        if let targetIndex = args.firstIndex(of: "--target"),
-           args.indices.contains(targetIndex + 1) {
-            targetName = args[targetIndex + 1].lowercased()
+        if let targetIndex = arguments.firstIndex(of: "--target"),
+           arguments.indices.contains(targetIndex + 1) {
+            targetName = arguments[targetIndex + 1].lowercased()
         } else {
             targetName = settingsManager.settings.target.lowercased()
         }
