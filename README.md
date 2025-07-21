@@ -57,6 +57,8 @@ The next time you launch DicFix, it will create and read its `settings.json` and
   "fontName": "DaddyTimeMono Nerd Font",
   "promptBodyColor": "labelColor",
   "textColor": "secondaryLabelColor",
+  "placeholder": "Speak now...",
+  "placeholderColor": "systemGray",
   "promptSuffix": "$ ",
   "windowWidth": 600,
   "target": "paste"
