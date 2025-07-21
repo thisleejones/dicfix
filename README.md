@@ -65,7 +65,9 @@ The next time you launch DicFix, it will create and read its `settings.json` and
   "promptSuffix": "$ ",
   "windowWidth": 600,
   "target": "paste",
-  "dictationKey": "F5"
+  "dictationKey": "F5",
+  "dictationKeyMods": "Command|Shift",
+  "dictationKeyDelay": "250ms"
 }
 ```
 
@@ -123,6 +125,8 @@ dicfix --dictation-key "F12"
 -   `--placeholder <string>`: Overrides the `placeholder` text for the current run.
 -   `--placeholder-color <color>`: Overrides the `placeholderColor` for the current run.
 -   `--dictation-key <key>`: Overrides the `dictationKey` from `settings.json`.
+-   `--dictation-key-mods <modifiers>`: Overrides the modifier keys for the dictation hotkey. Modifiers are pipe-separated, e.g., `"Command|Shift"`.
+-   `--dictation-key-delay <duration>`: Overrides the delay before the dictation hotkey is triggered. The duration can be in milliseconds (`100ms`) or seconds (`0.5s`). If no unit is provided, milliseconds are assumed.
 
 ### Supported Keycodes
 
