@@ -171,3 +171,15 @@ This project uses [Tuist](https://tuist.io) to manage the Xcode project generati
     -   Open the newly created `dicfix.xcworkspace` file.
     -   Build the project in Xcode (`Cmd+B`).
     -   The compiled `dicfix.app` will be in the `build/Build/Products/Debug/` directory. You can move this to your `/Applications` folder for easy access.
+
+## Command-Line Alias
+
+For convenient command-line use after installing the application, you may want to create an alias for the binary located inside the `.app` bundle.
+
+Add the following line to your shell's configuration file (e.g., `~/.zshrc`, `~/.bash_profile`):
+
+```bash
+alias dicfix='/Applications/dicfix.app/Contents/MacOS/dicfix'
+```
+
+After adding the alias, restart your terminal or source your configuration file (e.g., `source ~/.zshrc`) for the changes to take effect. You can then run `dicfix` directly from your terminal.
