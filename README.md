@@ -13,7 +13,7 @@ The motivation for this project was to use voice dictation with modern CLI tools
 
 -   **Global Dictation**: Use dictation in any application, whether it supports it or not.
 -   **Multiple Targets**: Send text to the clipboard, paste it directly, type it out as keystrokes, or print it to standard output.
--   **Seamless Workflow**: The app automatically closes and sends the text when it loses focus or when you press `Enter`.
+-   **Seamless Workflow**: The app automatically closes when it loses focus. To send the text, press `Enter`.
 -   **Highly Customizable**: Configure the window's appearance, position, fonts, colors, and default target via a simple JSON file.
 -   **Command-Line Control**: Override settings and send text directly from the command line for scripting and automation.
 
@@ -21,7 +21,7 @@ The motivation for this project was to use voice dictation with modern CLI tools
 
 1.  **Launch**: Trigger DicFix using a hotkey or by running the app.
 2.  **Dictate**: The pop-up window appears. Start speaking.
-3.  **Confirm**: When you are finished, either press `Enter` or simply click away to make the window lose focus.
+3.  **Confirm**: When you are finished, press `Enter` to send the text to your target. If you click away, the app will close without sending the text.
 4.  **Output**: The app automatically closes, and the transcribed text is sent to your configured target (e.g., clipboard, active application).
 
 ## Configuration
@@ -144,6 +144,7 @@ The `dictationKey` option currently supports function keys `F1` through `F20`.
     - [ ] **Line Movement**: `0` (start of line), `$ (end of line)
     - [ ] **Mode Switching**: `i` (insert mode), `a` (append mode), `esc` (normal mode)
     - [ ] **Editing**: `x` (delete character), `dd` (delete line), `yy` (yank/copy line), `p` (paste)
+- [ ] **Configurable Closing Behavior**: Add a `--keep-alive` flag or `--mode` setting to prevent the app from closing on focus loss or after submission, allowing for multiple dictations in one session.
 
 ## Integration with Alacritty
 
