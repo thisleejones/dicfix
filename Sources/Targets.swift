@@ -32,6 +32,12 @@ class StdoutTarget: Target {
 }
 
 class PasteTarget: Target {
+    private let settingsManager: SettingsManager
+
+    init(settingsManager: SettingsManager) {
+        self.settingsManager = settingsManager
+    }
+
     func send(text: String) {
         // 1. Copy text to the clipboard.
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
@@ -40,8 +46,9 @@ class PasteTarget: Target {
         pasteboard.setString(text, forType: .string)
 
         // 2. Execute a delayed paste command using a detached shell process.
+        let delay = settingsManager.settings.pasteDelayInterval
         let script = "tell application \"System Events\" to keystroke \"v\" using command down"
-        let command = "(sleep 0.2 && /usr/bin/osascript -e '\(script)') &"
+        let command = "(sleep \(delay) && /usr/bin/osascript -e '\(script)') &"
 
         let process = Process()
         process.launchPath = "/bin/sh"
@@ -55,19 +62,20 @@ class PasteTarget: Target {
     }
 }
 
-
 // MARK: - Helper for Keystroke
 
 func type(text: String) {
     let source = CGEventSource(stateID: .hidSystemState)
     for character in text.utf16 {
         if let event = CGEvent(
-            keyboardEventSource: source, virtualKey: 0, keyDown: true) {
+            keyboardEventSource: source, virtualKey: 0, keyDown: true)
+        {
             event.keyboardSetUnicodeString(stringLength: 1, unicodeString: [character])
             event.post(tap: .cgAnnotatedSessionEventTap)
         }
         if let event = CGEvent(
-            keyboardEventSource: source, virtualKey: 0, keyDown: false) {
+            keyboardEventSource: source, virtualKey: 0, keyDown: false)
+        {
             event.keyboardSetUnicodeString(stringLength: 1, unicodeString: [character])
             event.post(tap: .cgAnnotatedSessionEventTap)
         }

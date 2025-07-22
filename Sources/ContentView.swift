@@ -144,21 +144,43 @@ struct ContentView: View {
     }
 
     func invokeDictation() {
-        let key = settingsManager.settings.dictationKey
-        let script: String
+        let settings = settingsManager.settings
+        let key = settings.dictationKey
+        let mods = settings.dictationKeyMods
+            .split(separator: "|")
+            .map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+        let delay = settings.dictationKeyDelayInterval
 
-        if let keyCode = KeycodeMapper.keyCode(for: key) {
-            script = "tell application \"System Events\" to key code \(keyCode)"
-        } else {
-            script = "tell application \"System Events\" to keystroke \"\(key)\""
+        let script: String
+        var usingClause = ""
+
+        if !mods.isEmpty {
+            let modifiers = mods.map { "\($0) down" }.joined(separator: ", ")
+            usingClause = " using {\(modifiers)}"
         }
 
-        if let appleScript = NSAppleScript(source: script) {
-            var error: NSDictionary?
-            appleScript.executeAndReturnError(&error)
-            if let error = error {
-                print("Error invoking dictation: \(error)")
+        if let keyCode = KeycodeMapper.keyCode(for: key) {
+            script = "tell application \"System Events\" to key code \(keyCode)\(usingClause)"
+        } else {
+            script = "tell application \"System Events\" to keystroke \"\(key)\"\(usingClause)"
+        }
+
+        let execution = {
+            if let appleScript = NSAppleScript(source: script) {
+                var error: NSDictionary?
+                appleScript.executeAndReturnError(&error)
+                if let error = error {
+                    print("Error invoking dictation: \(error)")
+                }
             }
+        }
+
+        if delay > 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                execution()
+            }
+        } else {
+            execution()
         }
     }
 }

@@ -23,16 +23,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let arguments = commandLineArguments
         let target = getTarget(args: arguments)
 
-        // If --text is provided, send the text and terminate immediately.
-        if let textIndex = arguments.firstIndex(of: "--text"),
-            arguments.indices.contains(textIndex + 1)
-        {
-            let text = arguments[textIndex + 1]
-            target.send(text: text)
-            NSApp.terminate(nil)
-            return  // Exit before showing any UI
-        }
-
         if let placeholderIndex = arguments.firstIndex(of: "--placeholder"),
             arguments.indices.contains(placeholderIndex + 1)
         {
@@ -66,6 +56,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         {
             let dictationKeyDelayValue = arguments[dictationKeyDelayIndex + 1]
             settingsManager.settings.dictationKeyDelay = dictationKeyDelayValue
+        }
+
+        if let pasteDelayIndex = arguments.firstIndex(of: "--paste-delay"),
+            arguments.indices.contains(pasteDelayIndex + 1)
+        {
+            let pasteDelayValue = arguments[pasteDelayIndex + 1]
+            settingsManager.settings.pasteDelay = pasteDelayValue
         }
 
         if let promptIndex = arguments.firstIndex(of: "--prompt"),
@@ -146,7 +143,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         case "keystroke":
             return KeystrokeTarget()
         case "paste":
-            return PasteTarget()
+            return PasteTarget(settingsManager: settingsManager)
         case "clipboard", "pasteboard":
             return ClipboardTarget()
         case "stdout":

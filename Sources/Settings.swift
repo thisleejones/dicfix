@@ -24,6 +24,31 @@ struct AppSettings {
     var dictationKey: String
     var dictationKeyMods: String
     var dictationKeyDelay: String
+    var pasteDelay: String
+
+    var dictationKeyDelayInterval: TimeInterval {
+        return AppSettings.parseDuration(dictationKeyDelay)
+    }
+
+    var pasteDelayInterval: TimeInterval {
+        return AppSettings.parseDuration(pasteDelay)
+    }
+
+    static func parseDuration(_ durationStr: String) -> TimeInterval {
+        let trimmed = durationStr.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if trimmed.hasSuffix("ms") {
+            let value = trimmed.dropLast(2)
+            if let ms = Double(value) {
+                return ms / 1000.0
+            }
+        } else if trimmed.hasSuffix("s") {
+            let value = trimmed.dropLast()
+            return Double(value) ?? 0
+        } else if let val = Double(trimmed) {
+            return val / 1000.0  // Default to milliseconds if no unit
+        }
+        return 0
+    }
 
     // The original, sensible defaults
     static func defaultSettings() -> AppSettings {
@@ -47,7 +72,8 @@ struct AppSettings {
             target: "paste",
             dictationKey: "F5",
             dictationKeyMods: "",
-            dictationKeyDelay: "200ms"
+            dictationKeyDelay: "1000ms",
+            pasteDelay: "200ms",
         )
     }
 }
@@ -75,6 +101,7 @@ private struct CodableSettings: Codable {
     var dictationKey: String?
     var dictationKeyMods: String?
     var dictationKeyDelay: String?
+    var pasteDelay: String?
 }
 
 class SettingsManager: ObservableObject {
@@ -161,7 +188,8 @@ class SettingsManager: ObservableObject {
             target: loaded.target ?? defaults.target,
             dictationKey: loaded.dictationKey ?? defaults.dictationKey,
             dictationKeyMods: loaded.dictationKeyMods ?? defaults.dictationKeyMods,
-            dictationKeyDelay: loaded.dictationKeyDelay ?? defaults.dictationKeyDelay
+            dictationKeyDelay: loaded.dictationKeyDelay ?? defaults.dictationKeyDelay,
+            pasteDelay: loaded.pasteDelay ?? defaults.pasteDelay
         )
     }
 

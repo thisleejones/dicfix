@@ -5,7 +5,7 @@ DicFix is a lightweight macOS utility that provides a seamless dictation window 
 The motivation for this project was to use voice dictation with modern CLI tools, such as AI assistants (Claude, Gemini), where speaking a command or prompt can be more efficient than typing. DicFix bridges this gap by providing a simple, customizable pop-up that captures your speech and sends it to your desired target.
 
 > [!NOTE]
-> This project is a work in progress. Features related to hotkeys, keystroke delays, and modifier key support are still under active development and may change.
+> The main features are stable. The primary remaining task is to enhance hotkey support to include double-tap activation and reserved key combinations, similar to the native macOS dictation settings (see `System Settings > Keyboard > Dictation`).
 
 ![DicFix Screenshot](screenshot.png)
 
@@ -67,7 +67,8 @@ The next time you launch DicFix, it will create and read its `settings.json` and
   "target": "paste",
   "dictationKey": "F5",
   "dictationKeyMods": "Command|Shift",
-  "dictationKeyDelay": "250ms"
+  "dictationKeyDelay": "250ms",
+  "pasteDelay": "250ms"
 }
 ```
 
@@ -80,6 +81,9 @@ The next time you launch DicFix, it will create and read its `settings.json` and
     -   `"stdout"`: Prints the text to standard output. This is useful for scripting.
 -   **`dictationKey`**: The key used to trigger dictation when the app launches.
     -   See the **Supported Keycodes** section for available values.
+-   **`dictationKeyMods`**: A pipe-separated string of modifier keys to be used with `dictationKey`. For example, `"Command|Shift"`.
+-   **`dictationKeyDelay`**: The delay before the dictation hotkey is triggered. The duration can be in milliseconds (`100ms`) or seconds (`0.5s`). If no unit is provided, milliseconds are assumed.
+-   **`pasteDelay`**: The delay before the paste command is executed when using the `paste` target. The duration format is the same as `dictationKeyDelay`.
 -   **Window & Appearance**:
     -   `windowX`, `windowY`: The screen coordinates for the window's top-left corner.
     -   `windowWidth`, `windowHeight`: The dimensions of the window.
@@ -107,45 +111,51 @@ You can also run DicFix from the command line and override its behavior with arg
 # Run with a specific target
 dicfix --target stdout
 
-# Send text directly without opening the UI
-dicfix --target paste --text "Hello, World!"
-
 # Override the prompt displayed in the UI
 dicfix --prompt "Speak now:"
 
-# Override the dictation key for this run
-dicfix --dictation-key "F12"
+# Override the dictation key and its modifiers for this run
+dicfix --dictation-key "F6" --dictation-key-mods "Command|Shift"
 ```
+
+> [!NOTE]
+> When providing modifiers from the command line, it's important to quote the string (e.g., `"Command|Shift"`) to prevent your shell from interpreting the `|` character as a pipe.
 
 ### Arguments
 
 -   `--target <target>`: Overrides the `target` from `settings.json`. Valid targets are `clipboard`, `paste`, `keystroke`, and `stdout`.
--   `--text <string>`: Immediately sends the provided string to the specified target without showing the dictation window.
 -   `--prompt <string>`: Overrides the `promptBody` setting for the current run.
 -   `--placeholder <string>`: Overrides the `placeholder` text for the current run.
 -   `--placeholder-color <color>`: Overrides the `placeholderColor` for the current run.
 -   `--dictation-key <key>`: Overrides the `dictationKey` from `settings.json`.
 -   `--dictation-key-mods <modifiers>`: Overrides the modifier keys for the dictation hotkey. Modifiers are pipe-separated, e.g., `"Command|Shift"`.
 -   `--dictation-key-delay <duration>`: Overrides the delay before the dictation hotkey is triggered. The duration can be in milliseconds (`100ms`) or seconds (`0.5s`). If no unit is provided, milliseconds are assumed.
+-   `--paste-delay <duration>`: Overrides the delay before the paste command is executed. The duration format is the same as `--dictation-key-delay`.
 
 ### Supported Keycodes
 
 The `dictationKey` option currently supports function keys `F1` through `F20`.
 
-> [!NOTE]
-> This feature is under active development. Support for key combinations with modifiers (e.g., Command, Shift, Control) is planned for a future release.
+## Roadmap
+
+- [ ] **VIM Motions**: Implement basic VIM-style navigation and editing within the text field.
+    - [ ] **Navigation**: `h` (left), `j` (down), `k` (up), `l` (right)
+    - [ ] **Word Movement**: `w` (next word), `b` (previous word)
+    - [ ] **Line Movement**: `0` (start of line), `$ (end of line)
+    - [ ] **Mode Switching**: `i` (insert mode), `a` (append mode), `esc` (normal mode)
+    - [ ] **Editing**: `x` (delete character), `dd` (delete line), `yy` (yank/copy line), `p` (paste)
 
 ## Integration with Alacritty
 
 You can launch DicFix from Alacritty using a keybinding. Add the following to your `alacritty.toml` file (usually located at `~/.config/alacritty/alacritty.toml`).
 
-This example binds `Shift+Command+d` to launch the app:
+This example binds `Command+Shift-D` to launch the app:
 
 ```toml
 [keyboard]
 bindings = [
   # Add this binding to launch DicFix
-  { key = "d", mods = "Shift|Command", command = { program = "/Applications/dicfix.app/Contents/MacOS/dicfix", args = ["--target=paste"] } }
+  { key = "d", mods = "Command|Shift", command = { program = "/Applications/dicfix.app/Contents/MacOS/dicfix", args = ["--target=paste"] } }
 ]
 ```
 

@@ -106,4 +106,39 @@ class SettingsTests: XCTestCase {
         XCTAssertEqual(updatedSettings.dictationKeyMods, "Command|Shift", "Dictation key mods should be updated by command-line argument")
         XCTAssertEqual(updatedSettings.dictationKeyDelay, "500ms", "Dictation key delay should be updated by command-line argument")
     }
+
+    func testParseDuration() {
+        // Test standard millisecond parsing
+        XCTAssertEqual(AppSettings.parseDuration("500ms"), 0.5)
+        // Test the failing case
+        XCTAssertEqual(AppSettings.parseDuration("2000ms"), 2.0)
+        // Test standard second parsing
+        XCTAssertEqual(AppSettings.parseDuration("1.5s"), 1.5)
+        // Test unitless parsing (defaults to milliseconds)
+        XCTAssertEqual(AppSettings.parseDuration("1200"), 1.2)
+        // Test integer second parsing
+        XCTAssertEqual(AppSettings.parseDuration("2s"), 2.0)
+        // Test invalid string
+        XCTAssertEqual(AppSettings.parseDuration("abc"), 0.0)
+        // Test empty string
+        XCTAssertEqual(AppSettings.parseDuration(""), 0.0)
+        // Test with whitespace
+        XCTAssertEqual(AppSettings.parseDuration("  750ms  "), 0.75)
+    }
+
+    func testPasteDelayIsOverriddenByCommandLine() {
+        // 1. Set the command-line arguments for the test.
+        appDelegate.commandLineArguments = [
+            "/path/to/app",
+            "--paste-delay", "1.2s"
+        ]
+
+        // 2. Trigger applicationDidFinishLaunching to parse the arguments.
+        appDelegate.applicationDidFinishLaunching(Notification(name: NSApplication.didFinishLaunchingNotification))
+
+        // 3. Check that the settings have been updated.
+        let updatedSettings = appDelegate.settingsManager.settings
+        XCTAssertEqual(updatedSettings.pasteDelay, "1.2s", "Paste delay should be updated by command-line argument")
+        XCTAssertEqual(updatedSettings.pasteDelayInterval, 1.2, "Paste delay interval should be correctly parsed")
+    }
 }
