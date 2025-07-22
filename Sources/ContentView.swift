@@ -176,6 +176,15 @@ struct ContentView: View {
                 appleScript.executeAndReturnError(&error)
                 if let error = error {
                     print("Error invoking dictation: \(error)")
+                    // Display a user-facing alert on the main thread
+                    DispatchQueue.main.async {
+                        let alert = NSAlert()
+                        alert.messageText = "Error Invoking Dictation"
+                        alert.informativeText = "Failed to trigger the dictation key. Please check your settings.\n\nDetails: \(error)"
+                        alert.alertStyle = .critical
+                        alert.addButton(withTitle: "OK")
+                        alert.runModal()
+                    }
                 }
             }
         }
