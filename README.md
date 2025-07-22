@@ -167,7 +167,7 @@ bindings = [
 
 ## Building from Source
 
-This project uses [Tuist](https://tuist.io) to manage the Xcode project generation.
+This project uses a `Makefile` to simplify the build process. It relies on [Tuist](https://tuist.io) to generate the Xcode project.
 
 1.  **Install Tuist**: If you don't have Tuist, you can install it easily.
     ```bash
@@ -180,15 +180,36 @@ This project uses [Tuist](https://tuist.io) to manage the Xcode project generati
     cd dicfix
     ```
 
-3.  **Generate the Xcode Project**:
+3.  **Build the Application**:
+    Running `make build` will automatically generate the Xcode project using Tuist and then build the application.
     ```bash
-    tuist generate
+    make build
+    ```
+    The compiled `dicfix.app` will be in the `build/Build/Products/Debug/` directory.
+
+### Other Useful Commands
+
+-   **Run the app**:
+    ```bash
+    make run
     ```
 
-4.  **Open and Build**:
-    -   Open the newly created `dicfix.xcworkspace` file.
-    -   Build the project in Xcode (`Cmd+B`).
-    -   The compiled `dicfix.app` will be in the `build/Build/Products/Debug/` directory. You can move this to your `/Applications` folder for easy access.
+-   **Run with arguments**:
+    You can pass command-line arguments using the `ARGS` variable.
+    ```bash
+    make run ARGS='--target=stdout --prompt="Enter text:"'
+    ```
+
+-   **Install the app**:
+    This will copy the compiled `dicfix.app` to your `/Applications` folder.
+    ```bash
+    make install CONFIGURATION=Release
+    ```
+
+-   **Clean the build directory**:
+    ```bash
+    make clean
+    ```
 
 ## Command-Line Alias
 

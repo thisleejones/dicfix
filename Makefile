@@ -9,9 +9,21 @@ BUILD_DIR = build
 INSTALL_DIR ?= /Applications
 EXECUTABLE_PATH = "$(BUILD_DIR)/Build/Products/$(CONFIGURATION)/$(PROJECT_NAME).app/Contents/MacOS/$(PROJECT_NAME)"
 
-.PHONY: all build clean run install lint test release
+.PHONY: all build clean run install lint test release generate
 
 all: build
+
+generate:
+	@if ! command -v tuist &> /dev/null; then \
+		echo "Error: tuist is not installed. Please install it to continue."; \
+		echo "See: https://tuist.io"; \
+		exit 1; \
+	fi
+	@echo "Generating Xcode project with Tuist..."
+	@tuist generate --no-open
+
+build: generate
+
 
 build:
 	@echo "Building $(PROJECT_NAME) with $(CONFIGURATION) configuration..."
