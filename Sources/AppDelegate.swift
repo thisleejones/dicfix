@@ -21,56 +21,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Check for command-line arguments before doing anything else
         let arguments = commandLineArguments
+        processCommandLineArgs(arguments)
         let target = getTarget(args: arguments)
-
-        if let placeholderIndex = arguments.firstIndex(of: "--placeholder"),
-            arguments.indices.contains(placeholderIndex + 1)
-        {
-            let placeholderValue = arguments[placeholderIndex + 1]
-            settingsManager.settings.placeholder = placeholderValue
-        }
-
-        if let placeholderColorIndex = arguments.firstIndex(of: "--placeholder-color"),
-            arguments.indices.contains(placeholderColorIndex + 1)
-        {
-            let placeholderColorValue = arguments[placeholderColorIndex + 1]
-            settingsManager.settings.placeholderColor = placeholderColorValue
-        }
-
-        if let dictationKeyIndex = arguments.firstIndex(of: "--dictation-key"),
-            arguments.indices.contains(dictationKeyIndex + 1)
-        {
-            let dictationKeyValue = arguments[dictationKeyIndex + 1]
-            settingsManager.settings.dictationKey = dictationKeyValue
-        }
-
-        if let dictationKeyModsIndex = arguments.firstIndex(of: "--dictation-key-mods"),
-            arguments.indices.contains(dictationKeyModsIndex + 1)
-        {
-            let dictationKeyModsValue = arguments[dictationKeyModsIndex + 1]
-            settingsManager.settings.dictationKeyMods = dictationKeyModsValue
-        }
-
-        if let dictationKeyDelayIndex = arguments.firstIndex(of: "--dictation-key-delay"),
-            arguments.indices.contains(dictationKeyDelayIndex + 1)
-        {
-            let dictationKeyDelayValue = arguments[dictationKeyDelayIndex + 1]
-            settingsManager.settings.dictationKeyDelay = dictationKeyDelayValue
-        }
-
-        if let pasteDelayIndex = arguments.firstIndex(of: "--paste-delay"),
-            arguments.indices.contains(pasteDelayIndex + 1)
-        {
-            let pasteDelayValue = arguments[pasteDelayIndex + 1]
-            settingsManager.settings.pasteDelay = pasteDelayValue
-        }
-
-        if let promptIndex = arguments.firstIndex(of: "--prompt"),
-            arguments.indices.contains(promptIndex + 1)
-        {
-            let promptValue = arguments[promptIndex + 1]
-            settingsManager.settings.promptBody = promptValue
-        }
 
         // Hide the Dock icon
         NSApp.setActivationPolicy(.accessory)
@@ -122,6 +74,36 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // The most basic and standard way to show the window and make it active.
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func processCommandLineArgs(_ arguments: [String]) {
+        // Helper to extract an argument's value
+        func argumentValue(for option: String) -> String? {
+            guard let index = arguments.firstIndex(of: option),
+                arguments.indices.contains(index + 1)
+            else {
+                return nil
+            }
+            return arguments[index + 1]
+        }
+
+        // Map arguments to their corresponding settings
+        let argumentMap: [String: WritableKeyPath<AppSettings, String>] = [
+            "--placeholder": \.placeholder,
+            "--placeholder-color": \.placeholderColor,
+            "--dictation-key": \.dictationKey,
+            "--dictation-key-mods": \.dictationKeyMods,
+            "--dictation-key-delay": \.dictationKeyDelay,
+            "--paste-delay": \.pasteDelay,
+            "--prompt": \.promptBody,
+        ]
+
+        // Iterate over the map and update settings
+        for (argument, keyPath) in argumentMap {
+            if let value = argumentValue(for: argument) {
+                settingsManager.settings[keyPath: keyPath] = value
+            }
+        }
     }
 
     func getTarget(args: [String]? = nil) -> Target {
