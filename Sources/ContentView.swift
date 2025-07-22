@@ -159,10 +159,15 @@ struct ContentView: View {
             usingClause = " using {\(modifiers)}"
         }
 
+        // Sanitize the key to prevent command injection.
+        // We only allow F-keys to be executed as key codes.
         if let keyCode = KeycodeMapper.keyCode(for: key) {
             script = "tell application \"System Events\" to key code \(keyCode)\(usingClause)"
         } else {
-            script = "tell application \"System Events\" to keystroke \"\(key)\"\(usingClause)"
+            // For any other key, we treat it as a literal string to be typed.
+            // We must escape it to prevent injection.
+            let escapedKey = key.replacingOccurrences(of: "\"", with: "\\\"")
+            script = "tell application \"System Events\" to keystroke \"\(escapedKey)\"\(usingClause)"
         }
 
         let execution = {
