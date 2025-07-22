@@ -88,7 +88,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // Map arguments to their corresponding settings
-        let argumentMap: [String: WritableKeyPath<AppSettings, String>] = [
+        let stringArgumentMap: [String: WritableKeyPath<AppSettings, String>] = [
             "--placeholder": \.placeholder,
             "--placeholder-color": \.placeholderColor,
             "--dictation-key": \.dictationKey,
@@ -98,10 +98,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             "--prompt": \.promptBody,
         ]
 
-        // Iterate over the map and update settings
-        for (argument, keyPath) in argumentMap {
+        for (argument, keyPath) in stringArgumentMap {
             if let value = argumentValue(for: argument) {
                 settingsManager.settings[keyPath: keyPath] = value
+            }
+        }
+
+        let boolArgumentMap: [String: WritableKeyPath<AppSettings, Bool>] = [
+            "--vim-mode": \.vimMode,
+        ]
+
+        for (argument, keyPath) in boolArgumentMap {
+            if arguments.contains(argument) {
+                if let valueStr = argumentValue(for: argument)?.lowercased() {
+                    settingsManager.settings[keyPath: keyPath] = (valueStr == "true" || valueStr == "1")
+                } else {
+                    // If the argument is present without a value, treat it as true
+                    settingsManager.settings[keyPath: keyPath] = true
+                }
             }
         }
     }

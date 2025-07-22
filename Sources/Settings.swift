@@ -25,6 +25,7 @@ struct AppSettings {
     var dictationKeyMods: String
     var dictationKeyDelay: String
     var pasteDelay: String
+    var vimMode: Bool
 
     var dictationKeyDelayInterval: TimeInterval {
         return AppSettings.parseDuration(dictationKeyDelay)
@@ -74,6 +75,7 @@ struct AppSettings {
             dictationKeyMods: "",
             dictationKeyDelay: "1000ms",
             pasteDelay: "200ms",
+            vimMode: false
         )
     }
 }
@@ -102,6 +104,7 @@ private struct CodableSettings: Codable {
     var dictationKeyMods: String?
     var dictationKeyDelay: String?
     var pasteDelay: String?
+    var vimMode: Bool?
 }
 
 class SettingsManager: ObservableObject {
@@ -189,7 +192,8 @@ class SettingsManager: ObservableObject {
             dictationKey: loaded.dictationKey ?? defaults.dictationKey,
             dictationKeyMods: loaded.dictationKeyMods ?? defaults.dictationKeyMods,
             dictationKeyDelay: loaded.dictationKeyDelay ?? defaults.dictationKeyDelay,
-            pasteDelay: loaded.pasteDelay ?? defaults.pasteDelay
+            pasteDelay: loaded.pasteDelay ?? defaults.pasteDelay,
+            vimMode: loaded.vimMode ?? defaults.vimMode
         )
     }
 
