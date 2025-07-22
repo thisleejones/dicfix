@@ -78,6 +78,8 @@ The next time you launch DicFix, it will create and read its `settings.json` and
     -   `"clipboard"` or `"pasteboard"`: Copies the text to the system clipboard.
     -   `"paste"`: Copies the text and then simulates a `Cmd+V` keystroke to paste it.
     -   `"keystroke"`: Simulates typing the text character by character. (Requires Accessibility permissions).
+        > [!WARNING]
+        > This feature is currently not functional. Use the `paste` target instead.
     -   `"stdout"`: Prints the text to standard output. This is useful for scripting.
 -   **`dictationKey`**: The key used to trigger dictation when the app launches.
     -   See the **Supported Keycodes** section for available values.
@@ -145,6 +147,7 @@ The `dictationKey` option currently supports function keys `F1` through `F20`.
     - [ ] **Mode Switching**: `i` (insert mode), `a` (append mode), `esc` (normal mode)
     - [ ] **Editing**: `x` (delete character), `dd` (delete line), `yy` (yank/copy line), `p` (paste)
 - [ ] **Configurable Closing Behavior**: Add a `--keep-alive` flag or `--mode` setting to prevent the app from closing on focus loss or after submission, allowing for multiple dictations in one session.
+- [ ] **Fix Keystroke Target**: The `keystroke` target is currently non-functional and needs to be repaired.
 
 ## Integration with Alacritty
 
