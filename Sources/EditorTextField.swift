@@ -1,0 +1,114 @@
+import SwiftUI
+
+// The NSViewRepresentable that wraps our InterceptingTextView.
+struct EditorTextField: NSViewRepresentable {
+    @Binding var text: String
+    @Binding var cursorPosition: Int
+    var viewModel: EditorViewModel
+    var onSubmit: () -> Void
+    @EnvironmentObject var settingsManager: SettingsManager
+
+    // A custom NSTextView that correctly intercepts all key events.
+    private class InterceptingTextView: NSTextView {
+        var onKeyDown: ((NSEvent) -> Bool)?
+
+        override var acceptsFirstResponder: Bool { true }
+
+        override func keyDown(with event: NSEvent) {
+            if onKeyDown?(event) == true {
+                // If the event was handled by our custom logic, we stop.
+                return
+            }
+            // Otherwise, allow default NSTextView behavior (e.g., typing).
+            super.keyDown(with: event)
+        }
+
+        // Treat Enter as a submit action, not a newline.
+        override func insertNewline(_ sender: Any?) {
+            // This is handled by the coordinator's `textView(_:doCommandBy:)`.
+            super.insertNewline(sender)
+        }
+    }
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSScrollView()
+        scrollView.hasVerticalScroller = false
+        scrollView.hasHorizontalScroller = false
+        scrollView.drawsBackground = false
+
+        let textView = InterceptingTextView()
+        textView.onKeyDown = context.coordinator.handleKeyDown
+
+        // Configure to look like a borderless text field
+        textView.isEditable = true
+        textView.isSelectable = true
+        textView.isRichText = false
+        textView.backgroundColor = .clear
+        textView.font = NSFont(
+            name: settingsManager.settings.fontName,
+            size: CGFloat(settingsManager.settings.fontSize)
+        )
+        let textColor = NSColor(ColorMapper.parseColor(settingsManager.settings.textColor))
+        textView.textColor = textColor
+        textView.typingAttributes[.foregroundColor] = textColor
+        textView.delegate = context.coordinator
+        scrollView.documentView = textView
+
+        return scrollView
+    }
+
+    func updateNSView(_ nsView: NSScrollView, context: Context) {
+        context.coordinator.parent = self
+        guard let textView = nsView.documentView as? InterceptingTextView else { return }
+
+        if textView.string != text {
+            textView.string = text
+        }
+
+        if textView.selectedRange.location != cursorPosition {
+            textView.selectedRange = NSRange(location: cursorPosition, length: 0)
+        }
+
+        textView.insertionPointColor = viewModel.mode.insertionPointColor(
+            settings: settingsManager.settings)
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    class Coordinator: NSObject, NSTextViewDelegate {
+        var parent: EditorTextField
+
+        init(_ parent: EditorTextField) {
+            self.parent = parent
+        }
+
+        // The single entry point for all key events.
+        func handleKeyDown(event: NSEvent) -> Bool {
+            let keyEvent = KeyEvent.from(event: event)
+            return parent.viewModel.mode.handleEvent(keyEvent, editor: parent.viewModel)
+        }
+
+        // Delegate method for text changes.
+        func textDidChange(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            parent.text = textView.string
+            parent.cursorPosition = textView.selectedRange.location
+        }
+
+        // Delegate method for command keys (Enter, Escape, etc.).
+        func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+                parent.viewModel.requestSubmit()
+                return true
+            }
+
+            if let event = NSApp.currentEvent {
+                return handleKeyDown(event: event)
+            }
+
+            return false
+        }
+    }
+}

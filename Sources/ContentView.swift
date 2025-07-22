@@ -78,24 +78,35 @@ struct ContentView: View {
                         .font(appFont)
                         .padding(.leading, 4)  // Align with TextField's internal padding
                 }
-                TextField("", text: textBinding)
-                    .lineLimit(1)
-                    .accessibilityIdentifier("mainField")
-                    .textFieldStyle(PlainTextFieldStyle())
-                    .foregroundColor(textColor)
-                    .accentColor(textColor)
-                    .font(appFont)
-                    .focused($isMainFieldFocused)
-                    .onChange(of: isMainFieldFocused) { isFocused in
-                        if isFocused && !hasTriggeredDictation {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                if isMainFieldFocused && !hasTriggeredDictation {
-                                    hasTriggeredDictation = true
-                                    invokeDictation()
-                                }
+
+                if settingsManager.settings.vimMode {
+                    EditorView(text: textBinding, onSubmit: submit)
+                        .accessibilityIdentifier("mainField")
+                        .focused($isMainFieldFocused)
+                } else {
+                    TextField("", text: textBinding, onCommit: submit)
+                        .textFieldStyle(PlainTextFieldStyle())
+                        .font(appFont)
+                        .foregroundColor(textColor)
+                        .accessibilityIdentifier("mainField")
+                        .focused($isMainFieldFocused)
+                        .onExitCommand {
+                            if let appDelegate = NSApp.delegate as? AppDelegate {
+                                appDelegate.isTerminating = true
                             }
+                            NSApp.terminate(nil)
+                        }
+                }
+            }
+            .onChange(of: isMainFieldFocused) { isFocused in
+                if isFocused && !hasTriggeredDictation {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        if isMainFieldFocused && !hasTriggeredDictation {
+                            hasTriggeredDictation = true
+                            invokeDictation()
                         }
                     }
+                }
             }
             .padding(.vertical, 12)
             .padding(.trailing, 12)
@@ -106,20 +117,21 @@ struct ContentView: View {
                 .stroke(Color.gray.opacity(0.7), lineWidth: 4)
         )
         .clipShape(RoundedRectangle(cornerRadius: 14))
-        .onSubmit {
-            if let appDelegate = NSApp.delegate as? AppDelegate {
-                appDelegate.isTerminating = true
-            }
-            appendToHistory(text)
-            target.send(text: text)
-            NSApp.terminate(nil)
+        // .onExitCommand {
+        //     if let appDelegate = NSApp.delegate as? AppDelegate {
+        //         appDelegate.isTerminating = true
+        //     }
+        //     NSApp.terminate(nil)
+        // }
+    }
+
+    private func submit() {
+        if let appDelegate = NSApp.delegate as? AppDelegate {
+            appDelegate.isTerminating = true
         }
-        .onExitCommand {
-            if let appDelegate = NSApp.delegate as? AppDelegate {
-                appDelegate.isTerminating = true
-            }
-            NSApp.terminate(nil)
-        }
+        appendToHistory(text)
+        target.send(text: text)
+        NSApp.terminate(nil)
     }
 
     private func appendToHistory(_ command: String) {

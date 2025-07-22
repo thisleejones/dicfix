@@ -23,6 +23,9 @@ struct KeycodeMapper {
         "F18": 79,
         "F19": 80,
         "F20": 90,  // Add more mappings as needed
+        "Escape": 53,
+        "Enter": 36,
+        "KeypadEnter": 76,
         "'": 39,  // Apostrophe
     ]
 

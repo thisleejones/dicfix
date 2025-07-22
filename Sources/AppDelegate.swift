@@ -19,10 +19,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Check for command-line arguments before doing anything else
-        let arguments = commandLineArguments
-        processCommandLineArgs(arguments)
-        let target = getTarget(args: arguments)
+        // Process command-line arguments to override settings before UI is built.
+        initializeSettings(with: commandLineArguments)
+
+        let target = getTarget(args: commandLineArguments)
 
         // Hide the Dock icon
         NSApp.setActivationPolicy(.accessory)
@@ -76,7 +76,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    private func initializeSettings(with arguments: [String]) {
+        // Settings are already loaded from file by the SettingsManager singleton.
+        // Now, we override them with any command-line arguments.
+        processCommandLineArgs(arguments)
+    }
+
     private func processCommandLineArgs(_ arguments: [String]) {
+        // Create a mutable copy of the current settings to apply argument overrides.
+        var newSettings = settingsManager.settings
+
         // Helper to extract an argument's value
         func argumentValue(for option: String) -> String? {
             guard let index = arguments.firstIndex(of: option),
@@ -100,7 +109,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         for (argument, keyPath) in stringArgumentMap {
             if let value = argumentValue(for: argument) {
-                settingsManager.settings[keyPath: keyPath] = value
+                newSettings[keyPath: keyPath] = value
             }
         }
 
@@ -109,15 +118,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         ]
 
         for (argument, keyPath) in boolArgumentMap {
-            if arguments.contains(argument) {
-                if let valueStr = argumentValue(for: argument)?.lowercased() {
-                    settingsManager.settings[keyPath: keyPath] = (valueStr == "true" || valueStr == "1")
+            if let index = arguments.firstIndex(of: argument) {
+                // Check if a value is provided after the argument
+                if arguments.indices.contains(index + 1) && !arguments[index + 1].starts(with: "--") {
+                    let valueStr = arguments[index + 1].lowercased()
+                    newSettings[keyPath: keyPath] = (valueStr == "true" || valueStr == "1")
                 } else {
                     // If the argument is present without a value, treat it as true
-                    settingsManager.settings[keyPath: keyPath] = true
+                    newSettings[keyPath: keyPath] = true
                 }
             }
         }
+
+        // Atomically update the settings to trigger UI refresh.
+        settingsManager.settings = newSettings
     }
 
     func getTarget(args: [String]? = nil) -> Target {
