@@ -2,6 +2,14 @@ import SwiftUI
 
 // MARK: - State Machine Types
 
+/// An enum representing a fully-formed, repeatable command.
+enum RepeatableAction {
+    /// A standard operator + motion command, e.g., `dw`, `3yy`.
+    case standard(op: EditorOperator, motion: EditorMotion, count: Int)
+    /// A standalone command that is repeatable, e.g., `D`, `x`.
+    case standalone(token: EditorCommandToken, count: Int)
+}
+
 /// Describes an action to be taken (e.g., delete, change).
 enum EditorOperator {
     case delete
@@ -81,11 +89,13 @@ enum EditorCommandToken: Equatable {
     // Standalone commands
     case switchToInsertMode
     case switchToInsertModeAndMove
+    case switchToVisualMode
     case deleteToEndOfLine  // D
     case yankToEndOfLine  // Y
     case deleteChar // x
     case deleteCharBackward // X
     case changeToEndOfLine // C
+    case repeatLastAction // .
     case requestSubmit
     case requestQuit
 
@@ -174,7 +184,9 @@ enum EditorCommandToken: Equatable {
         // Standalone Commands
         case .i: return .switchToInsertMode
         case .a: return .switchToInsertModeAndMove
+        case .v: return .switchToVisualMode
         case .x: return .deleteChar
+        case .`repeat`: return .repeatLastAction
         case .enter, .keypadEnter: return .requestSubmit
         case .escape: return .requestQuit  // In normal mode, escape is for quitting.
         case .tilde: return .swapCase
@@ -229,16 +241,24 @@ final class EditorCommandStateMachine {
             case .switchToInsertModeAndMove:
                 editor.moveCursorToNextCharacter()
                 editor.switchToInsertMode()
+            case .switchToVisualMode:
+                editor.switchToVisualMode()
+            case .repeatLastAction:
+                editor.repeatLastAction()
             case .deleteToEndOfLine:
+                editor.setLastAction(.standalone(token: token, count: 1))
                 editor.deleteToEndOfLine()
             case .yankToEndOfLine:
                 // In Vim, Y is a synonym for yy, which yanks the whole line.
                 execute(op: .yank, motion: .line, count: 1, editor: editor)
             case .deleteChar:
+                editor.setLastAction(.standalone(token: token, count: 1))
                 editor.deleteCurrentCharacter()
             case .deleteCharBackward:
+                editor.setLastAction(.standalone(token: token, count: 1))
                 editor.deleteCharBackward()
             case .changeToEndOfLine:
+                editor.setLastAction(.standalone(token: token, count: 1))
                 editor.changeToEndOfLine()
             case .requestSubmit:
                 editor.requestSubmit()
@@ -331,7 +351,7 @@ final class EditorCommandStateMachine {
         }
     }
 
-    private func executeMotion(_ motion: EditorMotion, count: Int, editor: EditorViewModel) {
+    func executeMotion(_ motion: EditorMotion, count: Int, editor: EditorViewModel) {
         // Special handling for motions that use count as a line number.
         if motion == .goToEndOfFile {
             editor.goToLine(count)
@@ -359,10 +379,35 @@ final class EditorCommandStateMachine {
         }
     }
 
+    func executeAction(_ action: RepeatableAction, editor: EditorViewModel) {
+        switch action {
+        case .standard(let op, let motion, let count):
+            execute(op: op, motion: motion, count: count, editor: editor)
+        case .standalone(let token, let count):
+            // We only support a limited set of repeatable standalone commands.
+            for _ in 0..<count {
+                switch token {
+                case .deleteToEndOfLine:
+                    editor.deleteToEndOfLine()
+                case .changeToEndOfLine:
+                    editor.changeToEndOfLine()
+                case .deleteChar:
+                    editor.deleteCurrentCharacter()
+                case .deleteCharBackward:
+                    editor.deleteCharBackward()
+                default:
+                    print("[EditorCommandStateMachine] Non-repeatable standalone action: \(token)")
+                }
+            }
+        }
+    }
+
     private func execute(
         op: EditorOperator, motion: EditorMotion, count: Int, editor: EditorViewModel
     ) {
         print("Executing: \(op) on \(motion) for \(count) time(s)")
+        editor.setLastAction(.standard(op: op, motion: motion, count: count))
+        
         let startPos = editor.cursorPosition
 
         executeMotion(motion, count: count, editor: editor)

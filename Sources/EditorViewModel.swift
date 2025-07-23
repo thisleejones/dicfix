@@ -3,28 +3,66 @@ import SwiftUI
 // MARK: - Editor View Model (State Machine)
 class EditorViewModel: ObservableObject {
     @Published var text: String = ""
-    @Published var cursorPosition: Int = 0
+    @Published var cursorPosition: Int = 0 {
+        didSet {
+            updateSelection()
+        }
+    }
     @Published private(set) var mode: EditorModeState = InsertModeState()
+    @Published var selection: Range<Int>?
+
+    // State for visual mode command counts.
+    var visualModeCount: Int = 0
+
+    // The last action performed that can be repeated with the '.' command.
+    private(set) var lastAction: RepeatableAction?
 
     // Callbacks (optional)
     var onQuit: (() -> Void)?
     var onSubmit: (() -> Void)?
 
     // Internal command state machine (no UI dependency)
-    private let commandSM = EditorCommandStateMachine()
+    let commandSM = EditorCommandStateMachine()
 
     init() {
         // Initial state is set directly.
     }
 
+    // MARK: Repeatable actions
+    func setLastAction(_ action: RepeatableAction) {
+        print("[EditorViewModel] Setting last action to: \(action)")
+        self.lastAction = action
+    }
+
+    func repeatLastAction() {
+        guard let lastAction = lastAction else {
+            print("[EditorViewModel] No last action to repeat.")
+            return
+        }
+        print("[EditorViewModel] Repeating last action: \(lastAction)")
+        // To repeat, we just feed the action back into the state machine.
+        commandSM.executeAction(lastAction, editor: self)
+    }
+
     // MARK: Mode switches
     func switchToInsertMode() {
         print("[EditorViewModel] Switching to InsertModeState")
+        clearSelection()
+        visualModeCount = 0
         mode = InsertModeState()
     }
     func switchToNormalMode() {
         print("[EditorViewModel] Switching to NormalModeState")
+        clearSelection()
+        visualModeCount = 0
         mode = NormalModeState()
+    }
+
+    func switchToVisualMode() {
+        print("[EditorViewModel] Switching to VisualModeState")
+        visualModeCount = 0
+        mode = VisualModeState(anchor: cursorPosition)
+        updateSelection()
     }
 
     // MARK: App-level intents
@@ -47,10 +85,36 @@ class EditorViewModel: ObservableObject {
     func handleToken(_ token: EditorCommandToken) {
         commandSM.handleToken(token, editor: self)
     }
+    
+    func executeOperator(_ op: EditorOperator, range: Range<Int>) {
+        switch op {
+        case .delete: delete(range: range)
+        case .yank: yank(range: range)
+        case .change: change(range: range)
+        case .lowercase: transform(range: range, to: .lowercase)
+        case .uppercase: transform(range: range, to: .uppercase)
+        case .swapCase: transform(range: range, to: .swapCase)
+        }
+    }
 
     //==================================================
     // MARK: - Cursor & Text Editing Helpers
     //==================================================
+    
+    func clearSelection() {
+        selection = nil
+    }
+
+    private func updateSelection() {
+        if let visualMode = mode as? VisualModeState {
+            let anchor = visualMode.anchor
+            if cursorPosition < anchor {
+                selection = cursorPosition..<anchor
+            } else {
+                selection = anchor..<cursorPosition
+            }
+        }
+    }
 
     func moveCursorToEndOfLine() {
         cursorPosition = text.count
@@ -80,11 +144,11 @@ class EditorViewModel: ObservableObject {
     }
 
     func moveCursorUp() {
-        // TODO: line math
+        print("[EditorViewModel] moveCursorUp called")
     }
 
     func moveCursorDown() {
-        // TODO: line math
+        print("[EditorViewModel] moveCursorDown called")
     }
 
     func moveCursorScreenLineDown() {

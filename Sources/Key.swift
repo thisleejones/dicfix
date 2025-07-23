@@ -89,11 +89,13 @@ enum Key: CGKeyCode {
     case x = 7
     case u = 32
     case tilde = 50
+    case v = 9
 
     // Action Keys
     case escape = 53
     case enter = 36
     case keypadEnter = 76
+    case `repeat` = 47 // '.' key
 }
 
 // 1) NormalizedKey distinguishes w vs W, b vs B, etc.

@@ -48,12 +48,22 @@ struct EditorTextField: NSViewRepresentable {
             name: settingsManager.settings.fontName,
             size: CGFloat(settingsManager.settings.fontSize)
         )
+        // Set the color for any new text that is typed.
         let textColor = NSColor(ColorMapper.parseColor(settingsManager.settings.textColor))
-        textView.textColor = textColor
         textView.typingAttributes[.foregroundColor] = textColor
+        textView.textColor = textColor
         textView.delegate = context.coordinator
+        if let tc = textView.textContainer {
+            tc.widthTracksTextView = true
+            tc.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+            tc.lineFragmentPadding = 0
+        }
+        textView.minSize = NSSize(width: 0, height: 0)
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
         scrollView.documentView = textView
-
         return scrollView
     }
 
@@ -61,12 +71,29 @@ struct EditorTextField: NSViewRepresentable {
         context.coordinator.parent = self
         guard let textView = nsView.documentView as? InterceptingTextView else { return }
 
+        let textColor = NSColor(ColorMapper.parseColor(settingsManager.settings.textColor))
+        // Always ensure typing attributes are up-to-date.
+        textView.typingAttributes[.foregroundColor] = textColor
+        textView.textColor = textColor
+
+        // Keep the sync, but don't gate the attribute fix behind it
         if textView.string != text {
             textView.string = text
         }
-
-        if textView.selectedRange.location != cursorPosition {
-            textView.selectedRange = NSRange(location: cursorPosition, length: 0)
+        
+        // Handle selection display
+        if let selection = viewModel.selection {
+            let nsRange = NSRange(location: selection.lowerBound, length: selection.count)
+            if textView.selectedRange != nsRange {
+                textView.selectedRange = nsRange
+            }
+        } else {
+            // If no selection, just update the cursor position
+            if textView.selectedRange.location != cursorPosition
+                || textView.selectedRange.length != 0
+            {
+                textView.selectedRange = NSRange(location: cursorPosition, length: 0)
+            }
         }
 
         textView.insertionPointColor = viewModel.mode.insertionPointColor(
