@@ -94,6 +94,7 @@ enum EditorCommandToken: Equatable {
     case switchToInsertMode
     case switchToInsertModeAndMove
     case switchToVisualMode
+    case switchToVisualLineMode
     case openLineBelow
     case openLineAbove
     case deleteToEndOfLine  // D
@@ -155,9 +156,18 @@ enum EditorCommandToken: Equatable {
             }
         }
 
+        // Control-modified keys
+        if keyEvent.mods.isControl {
+            switch k {
+            case .j: return .openLineBelow
+            default: break
+            }
+        }
+
         // Shift-modified keys that have their own meaning
         if keyEvent.mods.isShift {
             switch k {
+            case .v: return .switchToVisualLineMode
             case .o: return .openLineAbove
             case .d: return .deleteToEndOfLine
             case .y: return .yankToEndOfLine
@@ -254,29 +264,25 @@ final class EditorCommandStateMachine {
                 editor.switchToInsertMode()
             case .switchToVisualMode:
                 editor.switchToVisualMode()
+            case .switchToVisualLineMode:
+                editor.switchToVisualLineMode()
             case .openLineBelow:
-                editor.setLastAction(.standalone(token: token, count: 1))
-                editor.openLineBelow()
+                executeAction(.standalone(token: token, count: 1), editor: editor)
             case .openLineAbove:
-                editor.setLastAction(.standalone(token: token, count: 1))
-                editor.openLineAbove()
+                executeAction(.standalone(token: token, count: 1), editor: editor)
             case .repeatLastAction:
                 editor.repeatLastAction()
             case .deleteToEndOfLine:
-                editor.setLastAction(.standalone(token: token, count: 1))
-                editor.deleteToEndOfLine()
+                executeAction(.standalone(token: token, count: 1), editor: editor)
             case .yankToEndOfLine:
                 // In Vim, Y is a synonym for yy, which yanks the whole line.
                 execute(op: .yank, motion: .line, count: 1, editor: editor)
             case .deleteChar:
-                editor.setLastAction(.standalone(token: token, count: 1))
-                editor.deleteCurrentCharacter()
+                executeAction(.standalone(token: token, count: 1), editor: editor)
             case .deleteCharBackward:
-                editor.setLastAction(.standalone(token: token, count: 1))
-                editor.deleteCharBackward()
+                executeAction(.standalone(token: token, count: 1), editor: editor)
             case .changeToEndOfLine:
-                editor.setLastAction(.standalone(token: token, count: 1))
-                editor.changeToEndOfLine()
+                executeAction(.standalone(token: token, count: 1), editor: editor)
             case .requestSubmit:
                 editor.requestSubmit()
             case .requestQuit:
@@ -345,6 +351,12 @@ final class EditorCommandStateMachine {
         } else if token == .yankToEndOfLine {
             execute(op: .yank, motion: .line, count: count, editor: editor)
             state = .idle
+        } else if token == .deleteChar {
+            executeAction(.standalone(token: token, count: count), editor: editor)
+            state = .idle
+        } else if token == .deleteCharBackward {
+            executeAction(.standalone(token: token, count: count), editor: editor)
+            state = .idle
         } else {
             // Invalid sequence. Reset and re-process.
             state = .idle
@@ -399,6 +411,7 @@ final class EditorCommandStateMachine {
     }
 
     func executeAction(_ action: RepeatableAction, editor: EditorViewModel) {
+        editor.setLastAction(action)
         switch action {
         case .standard(let op, let motion, let count):
             execute(op: op, motion: motion, count: count, editor: editor)

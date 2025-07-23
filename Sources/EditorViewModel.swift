@@ -65,6 +65,13 @@ class EditorViewModel: ObservableObject {
         updateSelection()
     }
 
+    func switchToVisualLineMode() {
+        print("[EditorViewModel] Switching to VisualLineModeState")
+        visualModeCount = 0
+        mode = VisualLineModeState(anchor: cursorPosition)
+        updateSelection()
+    }
+
     // MARK: App-level intents
     func requestQuit() {
         print("[EditorViewModel] Quit requested.")
@@ -115,6 +122,15 @@ class EditorViewModel: ObservableObject {
                 // Selection from anchor up to and including the cursor
                 selection = anchor..<(cursorPosition + 1)
             }
+        } else if let visualLineMode = mode as? VisualLineModeState {
+            let textAsNSString = text as NSString
+            let anchorRange = textAsNSString.lineRange(for: NSRange(location: visualLineMode.anchor, length: 0))
+            let cursorLineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
+            
+            let start = min(anchorRange.location, cursorLineRange.location)
+            let end = max(anchorRange.upperBound, cursorLineRange.upperBound)
+            
+            selection = start..<end
         }
     }
 
@@ -373,6 +389,12 @@ class EditorViewModel: ObservableObject {
         text.insert("\n", at: text.index(text.startIndex, offsetBy: insertPosition))
         cursorPosition = insertPosition
         switchToInsertMode()
+    }
+
+    func insertNewline() {
+        let index = text.index(text.startIndex, offsetBy: cursorPosition)
+        text.insert("\n", at: index)
+        cursorPosition += 1
     }
 
     //==================================================
