@@ -10,6 +10,7 @@ class EditorViewModel: ObservableObject {
     }
     @Published private(set) var mode: EditorModeState = InsertModeState()
     @Published var selection: Range<Int>?
+    var desiredColumn: Int?
 
     // State for visual mode command counts.
     var visualModeCount: Int = 0
@@ -113,6 +114,7 @@ class EditorViewModel: ObservableObject {
     }
 
     private func updateSelection() {
+        desiredColumn = nil
         if let visualMode = mode as? VisualModeState {
             let anchor = visualMode.anchor
             if cursorPosition < anchor {
@@ -153,20 +155,52 @@ class EditorViewModel: ObservableObject {
         if cursorPosition > 0 {
             cursorPosition -= 1
         }
+        desiredColumn = nil
     }
 
     func moveCursorRight() {
         if cursorPosition < text.count {
             cursorPosition += 1
         }
+        desiredColumn = nil
     }
 
     func moveCursorUp() {
-        print("[EditorViewModel] moveCursorUp called")
+        let textAsNSString = text as NSString
+        let currentLineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
+
+        // Can't move up from the first line
+        guard currentLineRange.location > 0 else { return }
+
+        let previousLineRange = textAsNSString.lineRange(for: NSRange(location: currentLineRange.location - 1, length: 0))
+        let column = desiredColumn ?? (cursorPosition - currentLineRange.location)
+        if desiredColumn == nil {
+            desiredColumn = column
+        }
+
+        let lineContentLength = previousLineRange.length > 0 && textAsNSString.character(at: previousLineRange.upperBound - 1) == 10 ? previousLineRange.length - 1 : previousLineRange.length
+        let targetColumn = min(column, max(0, lineContentLength > 0 ? lineContentLength - 1 : lineContentLength))
+        
+        cursorPosition = previousLineRange.location + targetColumn
     }
 
     func moveCursorDown() {
-        print("[EditorViewModel] moveCursorDown called")
+        let textAsNSString = text as NSString
+        let currentLineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
+
+        // Can't move down from the last line
+        guard currentLineRange.upperBound < textAsNSString.length else { return }
+
+        let nextLineRange = textAsNSString.lineRange(for: NSRange(location: currentLineRange.upperBound, length: 0))
+        let column = desiredColumn ?? (cursorPosition - currentLineRange.location)
+        if desiredColumn == nil {
+            desiredColumn = column
+        }
+
+        let lineContentLength = nextLineRange.length > 0 && textAsNSString.character(at: nextLineRange.upperBound - 1) == 10 ? nextLineRange.length - 1 : nextLineRange.length
+        let targetColumn = min(column, max(0, lineContentLength > 0 ? lineContentLength - 1 : lineContentLength))
+
+        cursorPosition = nextLineRange.location + targetColumn
     }
 
     func moveCursorScreenLineDown() {
@@ -208,12 +242,16 @@ class EditorViewModel: ObservableObject {
             self.direction = direction
         }
 
-        var isAtEnd: Bool {
-            direction == .forward ? index >= text.count : index < 0
+        func canAdvance() -> Bool {
+            if direction == .forward {
+                return index < text.count
+            } else {
+                return index >= 0
+            }
         }
 
         var currentType: CharType {
-            guard !isAtEnd else { return .whitespace }
+            guard canAdvance() else { return .whitespace }
             let char = text[index]
             if char.isWhitespace { return .whitespace }
             if char.isLetter || char.isNumber || char == "_" { return .word }
@@ -227,16 +265,16 @@ class EditorViewModel: ObservableObject {
 
     func moveCursorForwardByWord(isWORD: Bool = false) {
         var scanner = TextScanner(text: text, index: cursorPosition, direction: .forward)
-        if scanner.isAtEnd { return }
+        if !scanner.canAdvance() { return }
 
         if isWORD {
             // WORD = run of non-whitespace
             if scanner.currentType != .whitespace {
-                while !scanner.isAtEnd && scanner.currentType != .whitespace { scanner.advance() }
+                while scanner.canAdvance() && scanner.currentType != .whitespace { scanner.advance() }
             } else {
-                while !scanner.isAtEnd && scanner.currentType == .whitespace { scanner.advance() }
+                while scanner.canAdvance() && scanner.currentType == .whitespace { scanner.advance() }
             }
-            while !scanner.isAtEnd && scanner.currentType == .whitespace { scanner.advance() }
+            while scanner.canAdvance() && scanner.currentType == .whitespace { scanner.advance() }
             cursorPosition = scanner.index
             return
         }
@@ -245,50 +283,50 @@ class EditorViewModel: ObservableObject {
 
         if startType == .whitespace {
             // Jump to first non-space token
-            while !scanner.isAtEnd && scanner.currentType == .whitespace { scanner.advance() }
+            while scanner.canAdvance() && scanner.currentType == .whitespace { scanner.advance() }
             cursorPosition = scanner.index
             return
         }
 
         // Consume current run (word or punctuation)
-        while !scanner.isAtEnd && scanner.currentType == startType { scanner.advance() }
+        while scanner.canAdvance() && scanner.currentType == startType { scanner.advance() }
 
         // If we just consumed a word, also skip the punctuation block right after it
         if startType == .word {
-            while !scanner.isAtEnd && scanner.currentType == .punctuation { scanner.advance() }
+            while scanner.canAdvance() && scanner.currentType == .punctuation { scanner.advance() }
         }
 
         // Skip trailing whitespace to land at next token start
-        while !scanner.isAtEnd && scanner.currentType == .whitespace { scanner.advance() }
+        while scanner.canAdvance() && scanner.currentType == .whitespace { scanner.advance() }
 
         cursorPosition = scanner.index
     }
 
     func moveCursorToEndOfWord(isWORD: Bool = false) {
         var scanner = TextScanner(text: text, index: cursorPosition, direction: .forward)
-        if scanner.isAtEnd { return }
+        if !scanner.canAdvance() { return }
 
         // If cursor is not on whitespace, advance once to ensure we can find the *next* word end.
         if scanner.currentType != .whitespace {
             scanner.advance()
-            if scanner.isAtEnd { return }
+            if !scanner.canAdvance() { return }
         }
 
         // Skip any whitespace to find the beginning of the next word/WORD
-        while !scanner.isAtEnd && scanner.currentType == .whitespace {
+        while scanner.canAdvance() && scanner.currentType == .whitespace {
             scanner.advance()
         }
-        if scanner.isAtEnd { return }
+        if !scanner.canAdvance() { return }
 
         let startType = scanner.currentType
         if isWORD {
             // A WORD is a sequence of non-whitespace characters.
-            while !scanner.isAtEnd && scanner.currentType != .whitespace {
+            while scanner.canAdvance() && scanner.currentType != .whitespace {
                 scanner.advance()
             }
         } else {
             // A word is a sequence of the same character type (word or punctuation).
-            while !scanner.isAtEnd && scanner.currentType == startType {
+            while scanner.canAdvance() && scanner.currentType == startType {
                 scanner.advance()
             }
         }
@@ -306,27 +344,27 @@ class EditorViewModel: ObservableObject {
         var scanner = TextScanner(text: text, index: cursorPosition - 1, direction: .backward)
 
         // Skip whitespace first
-        while !scanner.isAtEnd && scanner.currentType == .whitespace { scanner.advance() }
-        if scanner.isAtEnd {
+        while scanner.canAdvance() && scanner.currentType == .whitespace { scanner.advance() }
+        if !scanner.canAdvance() {
             cursorPosition = 0
             return
         }
 
         if isWORD {
             // WORD = run of non-whitespace
-            while !scanner.isAtEnd && scanner.currentType != .whitespace { scanner.advance() }
+            while scanner.canAdvance() && scanner.currentType != .whitespace { scanner.advance() }
             cursorPosition = scanner.index + 1
             return
         }
 
         // If we land on punctuation, consume that block then continue into previous word
         if scanner.currentType == .punctuation {
-            while !scanner.isAtEnd && scanner.currentType == .punctuation { scanner.advance() }
+            while scanner.canAdvance() && scanner.currentType == .punctuation { scanner.advance() }
         }
 
         // Now consume the word (or whatever block we're on) to its beginning
         let blockType = scanner.currentType
-        while !scanner.isAtEnd && scanner.currentType == blockType && blockType != .whitespace {
+        while scanner.canAdvance() && scanner.currentType == blockType && blockType != .whitespace {
             scanner.advance()
         }
 
