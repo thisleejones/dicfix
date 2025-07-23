@@ -71,6 +71,7 @@ enum Key: CGKeyCode {
     case a = 0
     case i = 34
     case o = 31
+    case p = 35
 
 
     // Motion Keys

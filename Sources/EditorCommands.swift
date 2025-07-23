@@ -73,8 +73,8 @@ enum EditorCommandToken: Equatable {
     case delete
     case yank
     case change
-    case lowercase // gu
-    case uppercase // gU
+    case lowercase  // gu
+    case uppercase  // gU
     case swapCase  // g~
 
     // Motions
@@ -82,13 +82,13 @@ enum EditorCommandToken: Equatable {
     case WORDForward  // W
     case wordBackward  // b
     case WORDBackward  // B
-    case endOfWord // e
-    case endOfWORD // E
+    case endOfWord  // e
+    case endOfWORD  // E
     case charLeft, charRight, lineUp, lineDown
     case goToEndOfFile  // G
     case goToStartOfLine  // 0
-    case screenLineStartNonBlank // ^
-    case screenLineEnd    // $
+    case screenLineStartNonBlank  // ^
+    case screenLineEnd  // $
 
     // Standalone commands
     case switchToInsertMode
@@ -99,10 +99,12 @@ enum EditorCommandToken: Equatable {
     case openLineAbove
     case deleteToEndOfLine  // D
     case yankToEndOfLine  // Y
-    case deleteChar // x
-    case deleteCharBackward // X
-    case changeToEndOfLine // C
-    case repeatLastAction // .
+    case deleteChar  // x
+    case deleteCharBackward  // X
+    case changeToEndOfLine  // C
+    case repeatLastAction  // .
+    case paste  // p
+    case pasteBefore // P
     case requestSubmit
     case requestQuit
 
@@ -167,13 +169,14 @@ enum EditorCommandToken: Equatable {
         // Shift-modified keys that have their own meaning
         if keyEvent.mods.isShift {
             switch k {
+            case .p: return .pasteBefore // Shift-p is P
             case .v: return .switchToVisualLineMode
             case .o: return .openLineAbove
             case .d: return .deleteToEndOfLine
             case .y: return .yankToEndOfLine
             case .g: return .goToEndOfFile  // Shift-g is G
-            case .x: return .deleteCharBackward // Shift-x is X
-            case .c: return .changeToEndOfLine // Shift-c is C
+            case .x: return .deleteCharBackward  // Shift-x is X
+            case .c: return .changeToEndOfLine  // Shift-c is C
             case .u: return .uppercase
             case .tilde: return .swapCase
             case .four: return .screenLineEnd
@@ -207,6 +210,7 @@ enum EditorCommandToken: Equatable {
         case .o: return .openLineBelow
         case .v: return .switchToVisualMode
         case .x: return .deleteChar
+        case .p: return .paste
         case .`repeat`: return .repeatLastAction
         case .enter, .keypadEnter: return .requestSubmit
         case .escape: return .requestQuit  // In normal mode, escape is for quitting.
@@ -283,6 +287,10 @@ final class EditorCommandStateMachine {
                 executeAction(.standalone(token: token, count: 1), editor: editor)
             case .changeToEndOfLine:
                 executeAction(.standalone(token: token, count: 1), editor: editor)
+            case .paste:
+                executeAction(.standalone(token: token, count: 1), editor: editor)
+            case .pasteBefore:
+                executeAction(.standalone(token: token, count: 1), editor: editor)
             case .requestSubmit:
                 editor.requestSubmit()
             case .requestQuit:
@@ -308,26 +316,26 @@ final class EditorCommandStateMachine {
             } else if case .digit(0) = token {  // g0
                 executeMotion(.goToStartOfLine, count: count, editor: editor)
                 handled = true
-            } else if let op = token.toOperator { // gu, g~, gU etc.
+            } else if let op = token.toOperator {  // gu, g~, gU etc.
                 state = .waitingForMotion(operator: op, count: count)
-                return // Do not reset state to idle yet
-            } else if token == .lineDown { // gj
+                return  // Do not reset state to idle yet
+            } else if token == .lineDown {  // gj
                 executeMotion(.screenLineDown, count: count, editor: editor)
                 handled = true
-            } else if token == .lineUp { // gk
+            } else if token == .lineUp {  // gk
                 executeMotion(.screenLineUp, count: count, editor: editor)
                 handled = true
-            } else if token == .screenLineStartNonBlank { // g^
+            } else if token == .screenLineStartNonBlank {  // g^
                 executeMotion(.screenLineStartNonBlank, count: count, editor: editor)
                 handled = true
-            } else if token == .screenLineEnd { // g$
+            } else if token == .screenLineEnd {  // g$
                 executeMotion(.screenLineEnd, count: count, editor: editor)
                 handled = true
             }
         default:
             break  // Other prefixes are not yet supported.
         }
-        
+
         state = .idle
         if !handled {
             handleToken(token, editor: editor)
@@ -355,6 +363,12 @@ final class EditorCommandStateMachine {
             executeAction(.standalone(token: token, count: count), editor: editor)
             state = .idle
         } else if token == .deleteCharBackward {
+            executeAction(.standalone(token: token, count: count), editor: editor)
+            state = .idle
+        } else if token == .paste {
+            executeAction(.standalone(token: token, count: count), editor: editor)
+            state = .idle
+        } else if token == .pasteBefore {
             executeAction(.standalone(token: token, count: count), editor: editor)
             state = .idle
         } else {
@@ -405,7 +419,7 @@ final class EditorCommandStateMachine {
             case .screenLineStartNonBlank: editor.moveCursorToScreenLineStartNonBlank()
             case .screenLineEnd: editor.moveCursorToScreenLineEnd()
             case .line: editor.selectLine()
-            case .goToEndOfFile: break // Already handled above
+            case .goToEndOfFile: break  // Already handled above
             }
         }
     }
@@ -431,6 +445,10 @@ final class EditorCommandStateMachine {
                     editor.openLineBelow()
                 case .openLineAbove:
                     editor.openLineAbove()
+                case .paste:
+                    editor.paste()
+                case .pasteBefore:
+                    editor.pasteBefore()
                 default:
                     print("[EditorCommandStateMachine] Non-repeatable standalone action: \(token)")
                 }
@@ -443,7 +461,7 @@ final class EditorCommandStateMachine {
     ) {
         print("Executing: \(op) on \(motion) for \(count) time(s)")
         editor.setLastAction(.standard(op: op, motion: motion, count: count))
-        
+
         let startPos = editor.cursorPosition
 
         executeMotion(motion, count: count, editor: editor)

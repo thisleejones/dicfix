@@ -110,6 +110,16 @@ class MockEditorViewModel: EditorViewModel {
         log.append("requestQuit")
         super.requestQuit()
     }
+
+    override func paste() {
+        log.append("paste()")
+        super.paste()
+    }
+
+    override func pasteBefore() {
+        log.append("pasteBefore()")
+        super.pasteBefore()
+    }
 }
 
 // MARK: - State Machine Tests
@@ -259,5 +269,87 @@ class EditorCommandStateMachineTests: XCTestCase {
         stateMachine.handleToken(.charLeft, editor: editor)
         XCTAssertEqual(editor.log.count, 10)
         XCTAssertEqual(editor.log.last, "moveCursorLeft")
+    }
+}
+
+// MARK: - Yank/Paste Tests
+extension EditorCommandStateMachineTests {
+    func testYankLineAndPasteAfter() {
+        editor.text = "first line\nsecond line"
+        editor.cursorPosition = 0 // On "first line"
+
+        // Yank the first line ("yy")
+        stateMachine.handleToken(.yank, editor: editor)
+        stateMachine.handleToken(.yank, editor: editor)
+
+        // The register should contain the full line with the newline character.
+        XCTAssertTrue(editor.log.contains("yank(range: 0..<11)"), "Log was: \(editor.log)")
+        XCTAssertEqual(editor.register, "first line\n")
+
+        // Move to the second line to paste after it
+        editor.cursorPosition = 12 // On "second line"
+
+        // Paste after ("p")
+        stateMachine.handleToken(.paste, editor: editor)
+        XCTAssertEqual(editor.log.last, "paste()")
+        XCTAssertEqual(editor.text, "first line\nsecond line\nfirst line\n")
+    }
+
+    func testYankLineAndPasteBefore() {
+        editor.text = "first line\nsecond line"
+        editor.cursorPosition = 0 // On "first line"
+
+        // Yank the first line ("yy")
+        stateMachine.handleToken(.yank, editor: editor)
+        stateMachine.handleToken(.yank, editor: editor)
+        XCTAssertEqual(editor.register, "first line\n")
+
+        // Move to the second line to paste before it
+        editor.cursorPosition = 12 // On "second line"
+
+        // Paste before ("P")
+        stateMachine.handleToken(.pasteBefore, editor: editor)
+        XCTAssertEqual(editor.log.last, "pasteBefore()")
+        XCTAssertEqual(editor.text, "first line\nfirst line\nsecond line")
+    }
+
+    func testDeleteWordAndPaste() {
+        editor.text = "one two three"
+        editor.cursorPosition = 4 // Start of "two"
+
+        // Delete a word ("dw")
+        stateMachine.handleToken(.delete, editor: editor)
+        stateMachine.handleToken(.wordForward, editor: editor)
+
+        // The register should contain the deleted word and the space.
+        XCTAssertEqual(editor.register, "two ")
+        XCTAssertEqual(editor.text, "one three")
+
+        // Move cursor to the beginning
+        editor.cursorPosition = 0
+
+        // Paste after ("p")
+        stateMachine.handleToken(.paste, editor: editor)
+        XCTAssertEqual(editor.log.last, "paste()")
+        // Note: paste after cursor inserts at position + 1
+        XCTAssertEqual(editor.text, "otwo ne three")
+    }
+
+    func testYankLineAndPasteMultipleTimes() {
+        editor.text = "line one\nline two"
+        editor.cursorPosition = 0
+
+        // Yank line ("yy")
+        stateMachine.handleToken(.yank, editor: editor)
+        stateMachine.handleToken(.yank, editor: editor)
+        XCTAssertEqual(editor.register, "line one\n")
+
+        // Paste 3 times ("3p")
+        stateMachine.handleToken(.digit(3), editor: editor)
+        stateMachine.handleToken(.paste, editor: editor)
+
+        let pasteLog = editor.log.filter { $0 == "paste()" }
+        XCTAssertEqual(pasteLog.count, 3, "Paste should have been called 3 times.")
+        XCTAssertEqual(editor.text, "line one\nline one\nline one\nline one\nline two")
     }
 }

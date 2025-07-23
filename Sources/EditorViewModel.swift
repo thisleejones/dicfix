@@ -17,6 +17,7 @@ class EditorViewModel: ObservableObject {
 
     // The last action performed that can be repeated with the '.' command.
     private(set) var lastAction: RepeatableAction?
+    private(set) var register: String = ""
 
     // Callbacks (optional)
     var onQuit: (() -> Void)?
@@ -470,8 +471,13 @@ class EditorViewModel: ObservableObject {
             print("Deletion aborted: invalid range.")
             return 
         }
+        
+        // Yank the text before deleting it
         let from = text.index(text.startIndex, offsetBy: range.lowerBound)
         let to = text.index(text.startIndex, offsetBy: range.upperBound)
+        let yankedText = String(text[from..<to])
+        setRegister(to: yankedText)
+
         text.removeSubrange(from..<to)
         cursorPosition = range.lowerBound
     }
@@ -482,8 +488,69 @@ class EditorViewModel: ObservableObject {
     }
 
     func yank(range: Range<Int>) {
-        // TODO: registers/clipboard
+        guard range.lowerBound >= 0,
+              range.upperBound <= text.count,
+              range.lowerBound < range.upperBound
+        else {
+            print("Yank aborted: invalid range.")
+            return
+        }
+        let from = text.index(text.startIndex, offsetBy: range.lowerBound)
+        let to = text.index(text.startIndex, offsetBy: range.upperBound)
+        let yankedText = String(text[from..<to])
+        setRegister(to: yankedText)
+        
+        // Move cursor to the start of the yanked text
         cursorPosition = range.lowerBound
+    }
+
+    func paste() {
+        guard !register.isEmpty else { return }
+        
+        // If the register contains a full line (ends with newline), paste it on the line below.
+        if register.last == "\n" {
+            let textAsNSString = text as NSString
+            let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
+            let insertPosition = lineRange.location + lineRange.length
+            let index = text.index(text.startIndex, offsetBy: insertPosition)
+            text.insert(contentsOf: register, at: index)
+            cursorPosition = insertPosition // Move cursor to beginning of pasted line
+        } else {
+            // Otherwise, paste after the cursor.
+            let insertPosition = cursorPosition + 1
+            guard insertPosition <= text.count else {
+                text.append(contentsOf: register)
+                cursorPosition = text.count
+                return
+            }
+            let index = text.index(text.startIndex, offsetBy: insertPosition)
+            text.insert(contentsOf: register, at: index)
+            cursorPosition = insertPosition + register.count - 1 // Move cursor to end of pasted text
+        }
+    }
+
+    func pasteBefore() {
+        guard !register.isEmpty else { return }
+
+        // If the register contains a full line, paste it on the line above.
+        if register.last == "\n" {
+            let textAsNSString = text as NSString
+            let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
+            let insertPosition = lineRange.location
+            let index = text.index(text.startIndex, offsetBy: insertPosition)
+            text.insert(contentsOf: register, at: index)
+            cursorPosition = insertPosition // Move cursor to beginning of pasted line
+        } else {
+            // Otherwise, paste before the cursor.
+            let index = text.index(text.startIndex, offsetBy: cursorPosition)
+            text.insert(contentsOf: register, at: index)
+            cursorPosition = cursorPosition + register.count - 1 // Move cursor to end of pasted text
+        }
+    }
+
+    func setRegister(to value: String) {
+        print("Yanking to register: \(value)")
+        register = value
     }
 
     func deleteCurrentCharacter() {
