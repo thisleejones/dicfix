@@ -143,7 +143,7 @@ The `dictationKey` option currently supports function keys `F1` through `F20`.
 - [ ] **VIM Motions**: Implement basic VIM-style navigation and editing within the text field.
     - [ ] **Navigation**: `h` (left), `j` (down), `k` (up), `l` (right)
     - [ ] **Word Movement**: `w` (next word), `b` (previous word)
-    - [ ] **Line Movement**: `0` (start of line), `$ (end of line)
+    - [ ] **Line Movement**: `0` (start of line), `$` (end of line)
     - [ ] **Mode Switching**: `i` (insert mode), `a` (append mode), `esc` (normal mode)
     - [ ] **Editing**: `x` (delete character), `dd` (delete line), `yy` (yank/copy line), `p` (paste)
 - [ ] **Configurable Closing Behavior**: Add a `--keep-alive` flag or `--mode` setting to prevent the app from closing on focus loss or after submission, allowing for multiple dictations in one session.
