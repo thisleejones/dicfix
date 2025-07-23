@@ -3,7 +3,7 @@ import SwiftUI
 // MARK: - State Machine Types
 
 /// An enum representing a fully-formed, repeatable command.
-enum RepeatableAction {
+public enum RepeatableAction {
     /// A standard operator + motion command, e.g., `dw`, `3yy`.
     case standard(op: EditorOperator, motion: EditorMotion, count: Int)
     /// A standalone command that is repeatable, e.g., `D`, `x`.
@@ -11,7 +11,7 @@ enum RepeatableAction {
 }
 
 /// Describes an action to be taken (e.g., delete, change).
-enum EditorOperator {
+public enum EditorOperator {
     case delete
     case change
     case yank
@@ -21,7 +21,7 @@ enum EditorOperator {
 }
 
 /// Describes a region of text to be affected by an operator.
-enum EditorMotion {
+public enum EditorMotion {
     case wordForward
     case WORDForward
     case wordBackward
@@ -42,13 +42,13 @@ enum EditorMotion {
 }
 
 /// The explicit state of the command state machine.
-enum EditorCommandState: CustomStringConvertible {
+public enum EditorCommandState: CustomStringConvertible {
     case idle
     case waitingForMotion(operator: EditorOperator, count: Int)
     case waitingForOperator(count: Int)
     case waitingForSuffix(prefix: EditorCommandToken, count: Int)
 
-    var description: String {
+    public var description: String {
         switch self {
         case .idle:
             return "idle"
@@ -62,7 +62,7 @@ enum EditorCommandState: CustomStringConvertible {
     }
 }
 
-enum EditorCommandToken: Equatable {
+public enum EditorCommandToken: Equatable {
     // A token that starts a sequence, like 'g' in 'gg'
     case prefix(Character)
 
@@ -104,7 +104,7 @@ enum EditorCommandToken: Equatable {
     case changeToEndOfLine  // C
     case repeatLastAction  // .
     case paste  // p
-    case pasteBefore // P
+    case pasteBefore  // P
     case requestSubmit
     case requestQuit
 
@@ -169,7 +169,7 @@ enum EditorCommandToken: Equatable {
         // Shift-modified keys that have their own meaning
         if keyEvent.mods.isShift {
             switch k {
-            case .p: return .pasteBefore // Shift-p is P
+            case .p: return .pasteBefore  // Shift-p is P
             case .v: return .switchToVisualLineMode
             case .o: return .openLineAbove
             case .d: return .deleteToEndOfLine
@@ -221,10 +221,12 @@ enum EditorCommandToken: Equatable {
     }
 }
 
-final class EditorCommandStateMachine {
+public final class EditorCommandStateMachine {
     private var state: EditorCommandState = .idle
 
-    func handleToken(_ token: EditorCommandToken, editor: EditorViewModel) {
+    public init() {}
+
+    public func handleToken(_ token: EditorCommandToken, editor: EditorViewModel) {
         print("[State: \(state)] received token: \(token)")
         switch state {
         case .idle:
@@ -394,7 +396,7 @@ final class EditorCommandStateMachine {
         }
     }
 
-    func executeMotion(_ motion: EditorMotion, count: Int, editor: EditorViewModel) {
+    public func executeMotion(_ motion: EditorMotion, count: Int, editor: EditorViewModel) {
         // Special handling for motions that use count as a line number.
         if motion == .goToEndOfFile {
             editor.goToLine(count)
@@ -424,7 +426,7 @@ final class EditorCommandStateMachine {
         }
     }
 
-    func executeAction(_ action: RepeatableAction, editor: EditorViewModel) {
+    public func executeAction(_ action: RepeatableAction, editor: EditorViewModel) {
         editor.setLastAction(action)
         switch action {
         case .standard(let op, let motion, let count):

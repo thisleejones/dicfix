@@ -1,42 +1,42 @@
 import SwiftUI
 
 // MARK: - Editor View Model (State Machine)
-class EditorViewModel: ObservableObject {
-    @Published var text: String = ""
-    @Published var cursorPosition: Int = 0 {
+public class EditorViewModel: ObservableObject {
+    @Published public var text: String = ""
+    @Published public var cursorPosition: Int = 0 {
         didSet {
             updateSelection()
         }
     }
-    @Published private(set) var mode: EditorModeState = InsertModeState()
-    @Published var selection: Range<Int>?
-    var desiredColumn: Int?
+    @Published private(set) public var mode: EditorModeState = InsertModeState()
+    @Published public var selection: Range<Int>?
+    public var desiredColumn: Int?
 
     // State for visual mode command counts.
-    var visualModeCount: Int = 0
+    public var visualModeCount: Int = 0
 
     // The last action performed that can be repeated with the '.' command.
-    private(set) var lastAction: RepeatableAction?
-    private(set) var register: String = ""
+    private(set) public var lastAction: RepeatableAction?
+    private(set) public var register: String = ""
 
     // Callbacks (optional)
-    var onQuit: (() -> Void)?
-    var onSubmit: (() -> Void)?
+    public var onQuit: (() -> Void)?
+    public var onSubmit: (() -> Void)?
 
     // Internal command state machine (no UI dependency)
-    let commandSM = EditorCommandStateMachine()
+    public let commandSM = EditorCommandStateMachine()
 
-    init() {
+    public init() {
         // Initial state is set directly.
     }
 
     // MARK: Repeatable actions
-    func setLastAction(_ action: RepeatableAction) {
+    public func setLastAction(_ action: RepeatableAction) {
         print("[EditorViewModel] Setting last action to: \(action)")
         self.lastAction = action
     }
 
-    func repeatLastAction() {
+    public func repeatLastAction() {
         guard let lastAction = lastAction else {
             print("[EditorViewModel] No last action to repeat.")
             return
@@ -47,27 +47,27 @@ class EditorViewModel: ObservableObject {
     }
 
     // MARK: Mode switches
-    func switchToInsertMode() {
+    public func switchToInsertMode() {
         print("[EditorViewModel] Switching to InsertModeState")
         clearSelection()
         visualModeCount = 0
         mode = InsertModeState()
     }
-    func switchToNormalMode() {
+    public func switchToNormalMode() {
         print("[EditorViewModel] Switching to NormalModeState")
         clearSelection()
         visualModeCount = 0
         mode = NormalModeState()
     }
 
-    func switchToVisualMode() {
+    public func switchToVisualMode() {
         print("[EditorViewModel] Switching to VisualModeState")
         visualModeCount = 0
         mode = VisualModeState(anchor: cursorPosition)
         updateSelection()
     }
 
-    func switchToVisualLineMode() {
+    public func switchToVisualLineMode() {
         print("[EditorViewModel] Switching to VisualLineModeState")
         visualModeCount = 0
         mode = VisualLineModeState(anchor: cursorPosition)
@@ -75,27 +75,27 @@ class EditorViewModel: ObservableObject {
     }
 
     // MARK: App-level intents
-    func requestQuit() {
+    public func requestQuit() {
         print("[EditorViewModel] Quit requested.")
         onQuit?()
     }
-    func requestSubmit() {
+    public func requestSubmit() {
         print("[EditorViewModel] Submit requested.")
         onSubmit?()
     }
 
     // MARK: Key handling entry
     @discardableResult
-    func handleEvent(_ keyEvent: KeyEvent) -> Bool {
+    public func handleEvent(_ keyEvent: KeyEvent) -> Bool {
         mode.handleEvent(keyEvent, editor: self)
     }
 
     /// NormalModeState calls this to feed tokens into the command machine.
-    func handleToken(_ token: EditorCommandToken) {
+    public func handleToken(_ token: EditorCommandToken) {
         commandSM.handleToken(token, editor: self)
     }
     
-    func executeOperator(_ op: EditorOperator, range: Range<Int>) {
+    public func executeOperator(_ op: EditorOperator, range: Range<Int>) {
         switch op {
         case .delete: delete(range: range)
         case .yank: yank(range: range)
@@ -110,7 +110,7 @@ class EditorViewModel: ObservableObject {
     // MARK: - Cursor & Text Editing Helpers
     //==================================================
     
-    func clearSelection() {
+    public func clearSelection() {
         selection = nil
     }
 
@@ -137,36 +137,36 @@ class EditorViewModel: ObservableObject {
         }
     }
 
-    func moveCursorToEndOfLine() {
+    public func moveCursorToEndOfLine() {
         cursorPosition = text.count
     }
 
-    func moveCursorToNextCharacter() {
+    public func moveCursorToNextCharacter() {
         if cursorPosition < text.count {
             cursorPosition += 1
         }
     }
 
-    func moveCursorToBeginningOfLine() {
+    public func moveCursorToBeginningOfLine() {
         // TODO: find start of current visual line.
         cursorPosition = 0
     }
 
-    func moveCursorLeft() {
+    public func moveCursorLeft() {
         if cursorPosition > 0 {
             cursorPosition -= 1
         }
         desiredColumn = nil
     }
 
-    func moveCursorRight() {
+    public func moveCursorRight() {
         if cursorPosition < text.count {
             cursorPosition += 1
         }
         desiredColumn = nil
     }
 
-    func moveCursorUp() {
+    public func moveCursorUp() {
         let textAsNSString = text as NSString
         let currentLineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
 
@@ -185,7 +185,7 @@ class EditorViewModel: ObservableObject {
         cursorPosition = previousLineRange.location + targetColumn
     }
 
-    func moveCursorDown() {
+    public func moveCursorDown() {
         let textAsNSString = text as NSString
         let currentLineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
 
@@ -204,25 +204,25 @@ class EditorViewModel: ObservableObject {
         cursorPosition = nextLineRange.location + targetColumn
     }
 
-    func moveCursorScreenLineDown() {
+    public func moveCursorScreenLineDown() {
         // TODO: Implement proper screen line (visual line) navigation.
         // For now, fallback to logical line navigation.
         moveCursorDown()
     }
 
-    func moveCursorScreenLineUp() {
+    public func moveCursorScreenLineUp() {
         // TODO: Implement proper screen line (visual line) navigation.
         // For now, fallback to logical line navigation.
         moveCursorUp()
     }
 
-    func moveCursorToScreenLineStartNonBlank() {
+    public func moveCursorToScreenLineStartNonBlank() {
         // TODO: Implement proper screen line (visual line) navigation.
         // For now, fallback to logical line navigation.
         moveCursorToBeginningOfLine() // Simplified
     }
 
-    func moveCursorToScreenLineEnd() {
+    public func moveCursorToScreenLineEnd() {
         // TODO: Implement proper screen line (visual line) navigation.
         // For now, fallback to logical line navigation.
         moveCursorToEndOfLine()
@@ -264,7 +264,7 @@ class EditorViewModel: ObservableObject {
         }
     }
 
-    func moveCursorForwardByWord(isWORD: Bool = false) {
+    public func moveCursorForwardByWord(isWORD: Bool = false) {
         var scanner = TextScanner(text: text, index: cursorPosition, direction: .forward)
         if !scanner.canAdvance() { return }
 
@@ -303,7 +303,7 @@ class EditorViewModel: ObservableObject {
         cursorPosition = scanner.index
     }
 
-    func moveCursorToEndOfWord(isWORD: Bool = false) {
+    public func moveCursorToEndOfWord(isWORD: Bool = false) {
         var scanner = TextScanner(text: text, index: cursorPosition, direction: .forward)
         if !scanner.canAdvance() { return }
 
@@ -340,7 +340,7 @@ class EditorViewModel: ObservableObject {
         }
     }
 
-    func moveCursorBackwardByWord(isWORD: Bool = false) {
+    public func moveCursorBackwardByWord(isWORD: Bool = false) {
         if cursorPosition == 0 { return }
         var scanner = TextScanner(text: text, index: cursorPosition - 1, direction: .backward)
 
@@ -372,19 +372,19 @@ class EditorViewModel: ObservableObject {
         cursorPosition = scanner.index + 1
     }
 
-    func moveCursorToBeginningOfFile() {
+    public func moveCursorToBeginningOfFile() {
         cursorPosition = 0
     }
 
-    func moveCursorToEndOfFile() {
+    public func moveCursorToEndOfFile() {
         cursorPosition = text.count
     }
 
-    func goToEndOfFile() {
+    public func goToEndOfFile() {
         moveCursorToEndOfFile()
     }
 
-    func goToLine(_ line: Int) {
+    public func goToLine(_ line: Int) {
         print("Going to line: \(line)")
         // A count of 0 or 1 for 'G' goes to the first line.
         // 'gg' also results in a call to goToLine(1).
@@ -404,7 +404,7 @@ class EditorViewModel: ObservableObject {
         }
     }
 
-    func selectLine() {
+    public func selectLine() {
         let textAsNSString = text as NSString
         let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
         
@@ -412,7 +412,7 @@ class EditorViewModel: ObservableObject {
         cursorPosition = lineRange.location + lineRange.length
     }
 
-    func openLineBelow() {
+    public func openLineBelow() {
         let textAsNSString = text as NSString
         let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
         let insertPosition = lineRange.location + lineRange.length
@@ -421,7 +421,7 @@ class EditorViewModel: ObservableObject {
         switchToInsertMode()
     }
 
-    func openLineAbove() {
+    public func openLineAbove() {
         let textAsNSString = text as NSString
         let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
         let insertPosition = lineRange.location
@@ -430,7 +430,7 @@ class EditorViewModel: ObservableObject {
         switchToInsertMode()
     }
 
-    func insertNewline() {
+    public func insertNewline() {
         let index = text.index(text.startIndex, offsetBy: cursorPosition)
         text.insert("\n", at: index)
         cursorPosition += 1
@@ -440,7 +440,7 @@ class EditorViewModel: ObservableObject {
     // MARK: - Editing primitives (used by operators)
     //==================================================
 
-    func deleteToEndOfLine() {
+    public func deleteToEndOfLine() {
         let textAsNSString = text as NSString
         let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
         let endOfLine = lineRange.location + lineRange.length
@@ -452,7 +452,7 @@ class EditorViewModel: ObservableObject {
         delete(range: range)
     }
 
-    func yankToEndOfLine() {
+    public func yankToEndOfLine() {
         let textAsNSString = text as NSString
         let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
         let endOfLine = lineRange.location + lineRange.length
@@ -462,7 +462,7 @@ class EditorViewModel: ObservableObject {
         yank(range: range)
     }
 
-    func delete(range: Range<Int>) {
+    public func delete(range: Range<Int>) {
         print("Deleting range: \(range)")
         guard range.lowerBound >= 0,
             range.upperBound <= text.count,
@@ -482,12 +482,12 @@ class EditorViewModel: ObservableObject {
         cursorPosition = range.lowerBound
     }
 
-    func change(range: Range<Int>) {
+    public func change(range: Range<Int>) {
         delete(range: range)
         switchToInsertMode()
     }
 
-    func yank(range: Range<Int>) {
+    public func yank(range: Range<Int>) {
         guard range.lowerBound >= 0,
               range.upperBound <= text.count,
               range.lowerBound < range.upperBound
@@ -504,7 +504,7 @@ class EditorViewModel: ObservableObject {
         cursorPosition = range.lowerBound
     }
 
-    func paste() {
+    public func paste() {
         guard !register.isEmpty else { return }
         
         // If the register contains a full line (ends with newline), paste it on the line below.
@@ -529,7 +529,7 @@ class EditorViewModel: ObservableObject {
         }
     }
 
-    func pasteBefore() {
+    public func pasteBefore() {
         guard !register.isEmpty else { return }
 
         // If the register contains a full line, paste it on the line above.
@@ -548,36 +548,36 @@ class EditorViewModel: ObservableObject {
         }
     }
 
-    func setRegister(to value: String) {
+    public func setRegister(to value: String) {
         print("Yanking to register: \(value)")
         register = value
     }
 
-    func deleteCurrentCharacter() {
+    public func deleteCurrentCharacter() {
         guard cursorPosition < text.count else { return }
         let range = cursorPosition..<(cursorPosition + 1)
         delete(range: range)
     }
 
-    func deleteCharBackward() {
+    public func deleteCharBackward() {
         guard cursorPosition > 0 else { return }
         let range = (cursorPosition - 1)..<cursorPosition
         delete(range: range)
         moveCursorLeft()
     }
 
-    func changeToEndOfLine() {
+    public func changeToEndOfLine() {
         deleteToEndOfLine()
         switchToInsertMode()
     }
 
-    enum TransformationType {
+    public enum TransformationType {
         case lowercase
         case uppercase
         case swapCase
     }
 
-    func transform(range: Range<Int>, to type: TransformationType) {
+    public func transform(range: Range<Int>, to type: TransformationType) {
         guard range.lowerBound >= 0,
               range.upperBound <= text.count,
               range.lowerBound < range.upperBound

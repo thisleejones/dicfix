@@ -4,7 +4,7 @@ import CoreGraphics
 
 // A struct to represent a key press event, containing both the
 // case-insensitive key code and the case-sensitive characters.
-struct KeyEvent {
+public struct KeyEvent {
     let keyCode: CGKeyCode
     let key: Key?
     let characters: String?
@@ -12,7 +12,7 @@ struct KeyEvent {
     let mods: Modifiers
 
     // Factory method to create a KeyEvent from an NSEvent.
-    static func from(event: NSEvent) -> KeyEvent {
+    public static func from(event: NSEvent) -> KeyEvent {
         return KeyEvent(
             keyCode: event.keyCode,
             key: Key(rawValue: event.keyCode),
@@ -24,7 +24,7 @@ struct KeyEvent {
 }
 
 // A helper struct to make querying modifier flags easy and readable.
-struct Modifiers {
+public struct Modifiers {
     let flags: NSEvent.ModifierFlags
 
     let isShift: Bool
@@ -43,7 +43,7 @@ struct Modifiers {
     var isOnlyOption: Bool { flags.intersection(.deviceIndependentFlagsMask) == .option }
     var isOnlyCommand: Bool { flags.intersection(.deviceIndependentFlagsMask) == .command }
 
-    init(flags: NSEvent.ModifierFlags) {
+    public init(flags: NSEvent.ModifierFlags) {
         self.flags = flags
         self.isShift = flags.contains(.shift)
         self.isControl = flags.contains(.control)
@@ -54,7 +54,7 @@ struct Modifiers {
 
 // An enum to provide meaningful names for CGKeyCode values.
 // This makes key handling code much more readable and avoids "magic numbers".
-enum Key: CGKeyCode {
+public enum Key: CGKeyCode {
     // -- Numbers --
     case zero = 29
     case one = 18
@@ -72,7 +72,6 @@ enum Key: CGKeyCode {
     case i = 34
     case o = 31
     case p = 35
-
 
     // Motion Keys
     case h = 4
@@ -98,11 +97,11 @@ enum Key: CGKeyCode {
     case escape = 53
     case enter = 36
     case keypadEnter = 76
-    case `repeat` = 47 // '.' key
+    case `repeat` = 47  // '.' key
 }
 
 // 1) NormalizedKey distinguishes w vs W, b vs B, etc.
-enum NormalizedKey {
+public enum NormalizedKey {
     case w, W, b, B
     case h, j, k, l
     case d, y, c

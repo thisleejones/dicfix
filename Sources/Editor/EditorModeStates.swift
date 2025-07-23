@@ -1,24 +1,38 @@
 import Foundation
 import SwiftUI
 
+public struct EditorSettings {
+    public let textColor: Color
+    public let fontName: String
+    public let fontSize: CGFloat
+
+    public init(textColor: Color, fontName: String, fontSize: CGFloat) {
+        self.textColor = textColor
+        self.fontName = fontName
+        self.fontSize = fontSize
+    }
+}
+
 // MARK: - Editor State Protocol
-protocol EditorModeState {
+public protocol EditorModeState {
     var name: String { get }
-    func insertionPointColor(settings: AppSettings) -> NSColor
+    func insertionPointColor(settings: EditorSettings) -> NSColor
 
     /// Return true if the event is fully handled (prevent default text insertion), false to let the OS handle it.
     func handleEvent(_ keyEvent: KeyEvent, editor: EditorViewModel) -> Bool
 }
 
 // MARK: - Insert Mode State
-struct InsertModeState: EditorModeState {
-    let name = "INSERT"
+public struct InsertModeState: EditorModeState {
+    public let name = "INSERT"
 
-    func insertionPointColor(settings: AppSettings) -> NSColor {
-        return NSColor(ColorMapper.parseColor(settings.textColor))
+    public init() {}
+
+    public func insertionPointColor(settings: EditorSettings) -> NSColor {
+        return NSColor(settings.textColor)
     }
 
-    func handleEvent(_ keyEvent: KeyEvent, editor: EditorViewModel) -> Bool {
+    public func handleEvent(_ keyEvent: KeyEvent, editor: EditorViewModel) -> Bool {
         // Escape leaves insert mode.
         if keyEvent.key == .escape {
             print("[InsertModeState] Detected Escape. Switching to Normal mode.")
@@ -37,14 +51,16 @@ struct InsertModeState: EditorModeState {
 }
 
 // MARK: - Normal Mode State
-struct NormalModeState: EditorModeState {
-    let name = "NORMAL"
+public struct NormalModeState: EditorModeState {
+    public let name = "NORMAL"
 
-    func insertionPointColor(settings: AppSettings) -> NSColor {
+    public init() {}
+
+    public func insertionPointColor(settings: EditorSettings) -> NSColor {
         return .clear
     }
 
-    func handleEvent(_ keyEvent: KeyEvent, editor: EditorViewModel) -> Bool {
+    public func handleEvent(_ keyEvent: KeyEvent, editor: EditorViewModel) -> Bool {
         // In Normal mode, we translate the KeyEvent to a EditorCommandToken
         // and feed it to the state machine. We always return true to prevent
         // the default system behavior (e.g., inserting a 'j' character).
@@ -57,19 +73,19 @@ struct NormalModeState: EditorModeState {
 }
 
 // MARK: - Visual Mode State
-struct VisualModeState: EditorModeState {
-    let name = "VISUAL"
-    let anchor: Int
+public struct VisualModeState: EditorModeState {
+    public let name = "VISUAL"
+    public let anchor: Int
 
-    init(anchor: Int) {
+    public init(anchor: Int) {
         self.anchor = anchor
     }
 
-    func insertionPointColor(settings: AppSettings) -> NSColor {
+    public func insertionPointColor(settings: EditorSettings) -> NSColor {
         return .clear
     }
 
-    func handleEvent(_ keyEvent: KeyEvent, editor: EditorViewModel) -> Bool {
+    public func handleEvent(_ keyEvent: KeyEvent, editor: EditorViewModel) -> Bool {
         if keyEvent.key == .escape {
             editor.clearSelection()
             editor.switchToNormalMode()
@@ -110,19 +126,19 @@ struct VisualModeState: EditorModeState {
 }
 
 // MARK: - Visual Line Mode State
-struct VisualLineModeState: EditorModeState {
-    let name = "VISUAL LINE"
-    let anchor: Int
+public struct VisualLineModeState: EditorModeState {
+    public let name = "VISUAL LINE"
+    public let anchor: Int
 
-    init(anchor: Int) {
+    public init(anchor: Int) {
         self.anchor = anchor
     }
 
-    func insertionPointColor(settings: AppSettings) -> NSColor {
+    public func insertionPointColor(settings: EditorSettings) -> NSColor {
         return .clear
     }
 
-    func handleEvent(_ keyEvent: KeyEvent, editor: EditorViewModel) -> Bool {
+    public func handleEvent(_ keyEvent: KeyEvent, editor: EditorViewModel) -> Bool {
         if keyEvent.key == .escape {
             editor.clearSelection()
             editor.switchToNormalMode()

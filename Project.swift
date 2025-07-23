@@ -16,21 +16,34 @@ let project = Project(
                 "NSAccessibilityUsageDescription":
                     "This app uses accessibility features to capture dictation.",
                 "NSAppleEventsUsageDescription": "This app uses Apple Events to trigger dictation.",
-                "LSUIElement": "YES",  // This hides the app from the Dock
+                "LSUIElement": "YES",
                 "LSEnvironment": [
                     "OS_ACTIVITY_MODE": "disable"
                 ],
             ]),
-            sources: ["Sources/**"],
+            sources: [
+                "Sources/App.swift", "Sources/AppDelegate.swift", "Sources/Settings.swift",
+                "Sources/Targets.swift", "Sources/ContentView.swift", "Sources/KeycodeMapper.swift",
+                "Sources/ColorMapper.swift", "Sources/dicfix.entitlements",
+            ],
             resources: [
                 "Resources/**"
             ],
-            dependencies: [],
+            dependencies: [.target(name: "Editor")],
             settings: .settings(base: [
                 "CODE_SIGN_IDENTITY": "",
                 "CODE_SIGNING_REQUIRED": "NO",
                 "CODE_SIGNING_ALLOWED": "NO",
             ])
+        ),
+        .target(
+            name: "Editor",
+            destinations: .macOS,
+            product: .framework,
+            bundleId: "io.leejones.dicfix.Editor",
+            deploymentTargets: .macOS("13.0"),
+            sources: ["Sources/Editor/**"],
+            dependencies: []
         ),
         .target(
             name: "dicfixTests",
@@ -40,8 +53,7 @@ let project = Project(
             deploymentTargets: .macOS("13.0"),
             infoPlist: .default,
             sources: ["Tests/**"],
-            resources: [],
-            dependencies: [.target(name: "dicfix")]
+            dependencies: [.target(name: "Editor")]
         ),
     ],
     schemes: [

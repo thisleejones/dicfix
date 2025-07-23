@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import Editor
 
 struct ContentView: View {
     @EnvironmentObject var settingsManager: SettingsManager
@@ -80,9 +81,24 @@ struct ContentView: View {
                 }
 
                 if settingsManager.settings.vimMode {
-                    EditorView(text: textBinding, onSubmit: submit)
-                        .accessibilityIdentifier("mainField")
-                        .focused($isMainFieldFocused)
+                    let editorSettings = Editor.EditorSettings(
+                        textColor: textColor,
+                        fontName: settingsManager.settings.fontName,
+                        fontSize: settingsManager.settings.fontSize
+                    )
+                    Editor.EditorView(
+                        text: textBinding,
+                        settings: editorSettings,
+                        onSubmit: submit,
+                        onQuit: {
+                            if let appDelegate = NSApp.delegate as? AppDelegate {
+                                appDelegate.isTerminating = true
+                            }
+                            NSApp.terminate(nil)
+                        }
+                    )
+                    .accessibilityIdentifier("mainField")
+                    .focused($isMainFieldFocused)
                 } else {
                     TextField("", text: textBinding, onCommit: submit)
                         .textFieldStyle(PlainTextFieldStyle())

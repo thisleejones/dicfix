@@ -1,12 +1,12 @@
 import SwiftUI
 
 // The NSViewRepresentable that wraps our InterceptingTextView.
-struct EditorTextField: NSViewRepresentable {
+public struct EditorTextField: NSViewRepresentable {
     @Binding var text: String
     @Binding var cursorPosition: Int
     var viewModel: EditorViewModel
+    var settings: EditorSettings
     var onSubmit: () -> Void
-    @EnvironmentObject var settingsManager: SettingsManager
 
     // A custom NSTextView that correctly intercepts all key events.
     private class InterceptingTextView: NSTextView {
@@ -30,7 +30,7 @@ struct EditorTextField: NSViewRepresentable {
         }
     }
 
-    func makeNSView(context: Context) -> NSScrollView {
+    public func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = false
         scrollView.hasHorizontalScroller = false
@@ -45,11 +45,11 @@ struct EditorTextField: NSViewRepresentable {
         textView.isRichText = false
         textView.backgroundColor = .clear
         textView.font = NSFont(
-            name: settingsManager.settings.fontName,
-            size: CGFloat(settingsManager.settings.fontSize)
+            name: settings.fontName,
+            size: CGFloat(settings.fontSize)
         )
         // Set the color for any new text that is typed.
-        let textColor = NSColor(ColorMapper.parseColor(settingsManager.settings.textColor))
+        let textColor = NSColor(settings.textColor)
         textView.typingAttributes[.foregroundColor] = textColor
         textView.textColor = textColor
         textView.delegate = context.coordinator
@@ -67,11 +67,11 @@ struct EditorTextField: NSViewRepresentable {
         return scrollView
     }
 
-    func updateNSView(_ nsView: NSScrollView, context: Context) {
+    public func updateNSView(_ nsView: NSScrollView, context: Context) {
         context.coordinator.parent = self
         guard let textView = nsView.documentView as? InterceptingTextView else { return }
 
-        let textColor = NSColor(ColorMapper.parseColor(settingsManager.settings.textColor))
+        let textColor = NSColor(settings.textColor)
         // Always ensure typing attributes are up-to-date.
         textView.typingAttributes[.foregroundColor] = textColor
         textView.textColor = textColor
@@ -97,14 +97,14 @@ struct EditorTextField: NSViewRepresentable {
         }
 
         textView.insertionPointColor = viewModel.mode.insertionPointColor(
-            settings: settingsManager.settings)
+            settings: settings)
     }
 
-    func makeCoordinator() -> Coordinator {
+    public func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
 
-    class Coordinator: NSObject, NSTextViewDelegate {
+    public class Coordinator: NSObject, NSTextViewDelegate {
         var parent: EditorTextField
 
         init(_ parent: EditorTextField) {
@@ -118,14 +118,14 @@ struct EditorTextField: NSViewRepresentable {
         }
 
         // Delegate method for text changes.
-        func textDidChange(_ notification: Notification) {
+        public func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             parent.text = textView.string
             parent.cursorPosition = textView.selectedRange.location
         }
 
         // Delegate method for command keys (Enter, Escape, etc.).
-        func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+        public func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
             if commandSelector == #selector(NSResponder.insertNewline(_:)) {
                 parent.viewModel.requestSubmit()
                 return true
