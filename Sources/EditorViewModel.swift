@@ -5,12 +5,19 @@ class EditorViewModel: ObservableObject {
     @Published var text: String = ""
     @Published var cursorPosition: Int = 0
     @Published private(set) var mode: EditorModeState = InsertModeState()
+
+    // Callbacks (optional)
     var onQuit: (() -> Void)?
     var onSubmit: (() -> Void)?
+
+    // Internal command state machine (no UI dependency)
+    private let commandSM = EditorCommandStateMachine()
 
     init() {
         // Initial state is set directly.
     }
+
+    // MARK: Mode switches
     func switchToInsertMode() {
         print("[EditorViewModel] Switching to InsertModeState")
         mode = InsertModeState()
@@ -19,6 +26,8 @@ class EditorViewModel: ObservableObject {
         print("[EditorViewModel] Switching to NormalModeState")
         mode = NormalModeState()
     }
+
+    // MARK: App-level intents
     func requestQuit() {
         print("[EditorViewModel] Quit requested.")
         onQuit?()
@@ -27,6 +36,21 @@ class EditorViewModel: ObservableObject {
         print("[EditorViewModel] Submit requested.")
         onSubmit?()
     }
+
+    // MARK: Key handling entry
+    @discardableResult
+    func handleEvent(_ keyEvent: KeyEvent) -> Bool {
+        mode.handleEvent(keyEvent, editor: self)
+    }
+
+    /// NormalModeState calls this to feed tokens into the command machine.
+    func handleToken(_ token: EditorCommandToken) {
+        commandSM.handleToken(token, editor: self)
+    }
+
+    //==================================================
+    // MARK: - Cursor & Text Editing Helpers
+    //==================================================
 
     func moveCursorToEndOfLine() {
         cursorPosition = text.count
@@ -39,38 +63,55 @@ class EditorViewModel: ObservableObject {
     }
 
     func moveCursorToBeginningOfLine() {
-        // For now, this is a simple stub.
-        // A real implementation would need to find the start of the current line.
+        // TODO: find start of current visual line.
         cursorPosition = 0
-        print("[EditorViewModel] moveCursorToBeginningOfLine")
     }
 
     func moveCursorLeft() {
         if cursorPosition > 0 {
             cursorPosition -= 1
         }
-        print("[EditorViewModel] moveCursorLeft")
     }
 
     func moveCursorRight() {
         if cursorPosition < text.count {
             cursorPosition += 1
         }
-        print("[EditorViewModel] moveCursorRight")
     }
 
     func moveCursorUp() {
-        // Stub - requires line analysis
-        print("[EditorViewModel] moveCursorUp")
+        // TODO: line math
     }
 
     func moveCursorDown() {
-        // Stub - requires line analysis
-        print("[EditorViewModel] moveCursorDown")
+        // TODO: line math
+    }
+
+    func moveCursorScreenLineDown() {
+        // TODO: Implement proper screen line (visual line) navigation.
+        // For now, fallback to logical line navigation.
+        moveCursorDown()
+    }
+
+    func moveCursorScreenLineUp() {
+        // TODO: Implement proper screen line (visual line) navigation.
+        // For now, fallback to logical line navigation.
+        moveCursorUp()
+    }
+
+    func moveCursorToScreenLineStartNonBlank() {
+        // TODO: Implement proper screen line (visual line) navigation.
+        // For now, fallback to logical line navigation.
+        moveCursorToBeginningOfLine() // Simplified
+    }
+
+    func moveCursorToScreenLineEnd() {
+        // TODO: Implement proper screen line (visual line) navigation.
+        // For now, fallback to logical line navigation.
+        moveCursorToEndOfLine()
     }
 
     // MARK: - Word Movement Logic
-
     private struct TextScanner {
         enum CharType { case word, punctuation, whitespace }
         enum Direction { case forward, backward }
@@ -106,31 +147,38 @@ class EditorViewModel: ObservableObject {
         var scanner = TextScanner(text: text, index: cursorPosition, direction: .forward)
         if scanner.isAtEnd { return }
 
-        // If starting on whitespace, find the next non-whitespace character.
-        if scanner.currentType == .whitespace {
-            while !scanner.isAtEnd && scanner.currentType == .whitespace {
-                scanner.advance()
-            }
-        } else {
-            // Otherwise, skip the current group of characters...
-            let initialType = scanner.currentType
-            if isWORD {
-                // For WORD, skip all non-whitespace characters
-                while !scanner.isAtEnd && scanner.currentType != .whitespace {
-                    scanner.advance()
-                }
+        if isWORD {
+            // WORD = run of non-whitespace
+            if scanner.currentType != .whitespace {
+                while !scanner.isAtEnd && scanner.currentType != .whitespace { scanner.advance() }
             } else {
-                // For word or punctuation, skip the current block of same-type characters
-                while !scanner.isAtEnd && scanner.currentType == initialType {
-                    scanner.advance()
-                }
+                while !scanner.isAtEnd && scanner.currentType == .whitespace { scanner.advance() }
             }
-            // ...and then skip any subsequent whitespace to find the beginning of the next word.
-            while !scanner.isAtEnd && scanner.currentType == .whitespace {
-                scanner.advance()
-            }
+            while !scanner.isAtEnd && scanner.currentType == .whitespace { scanner.advance() }
+            cursorPosition = scanner.index
+            return
         }
-        
+
+        let startType = scanner.currentType
+
+        if startType == .whitespace {
+            // Jump to first non-space token
+            while !scanner.isAtEnd && scanner.currentType == .whitespace { scanner.advance() }
+            cursorPosition = scanner.index
+            return
+        }
+
+        // Consume current run (word or punctuation)
+        while !scanner.isAtEnd && scanner.currentType == startType { scanner.advance() }
+
+        // If we just consumed a word, also skip the punctuation block right after it
+        if startType == .word {
+            while !scanner.isAtEnd && scanner.currentType == .punctuation { scanner.advance() }
+        }
+
+        // Skip trailing whitespace to land at next token start
+        while !scanner.isAtEnd && scanner.currentType == .whitespace { scanner.advance() }
+
         cursorPosition = scanner.index
     }
 
@@ -138,29 +186,175 @@ class EditorViewModel: ObservableObject {
         if cursorPosition == 0 { return }
         var scanner = TextScanner(text: text, index: cursorPosition - 1, direction: .backward)
 
-        // Skip initial whitespace
-        while !scanner.isAtEnd && scanner.currentType == .whitespace {
-            scanner.advance()
-        }
+        // Skip whitespace first
+        while !scanner.isAtEnd && scanner.currentType == .whitespace { scanner.advance() }
         if scanner.isAtEnd {
             cursorPosition = 0
             return
         }
 
-        // Skip the current group of characters
-        let initialType = scanner.currentType
         if isWORD {
-            // For WORD, skip all non-whitespace characters
-            while !scanner.isAtEnd && scanner.currentType != .whitespace {
-                scanner.advance()
-            }
-        } else {
-            // For word or punctuation, skip the current block of same-type characters
-            while !scanner.isAtEnd && scanner.currentType == initialType {
-                scanner.advance()
-            }
+            // WORD = run of non-whitespace
+            while !scanner.isAtEnd && scanner.currentType != .whitespace { scanner.advance() }
+            cursorPosition = scanner.index + 1
+            return
         }
-        
+
+        // If we land on punctuation, consume that block then continue into previous word
+        if scanner.currentType == .punctuation {
+            while !scanner.isAtEnd && scanner.currentType == .punctuation { scanner.advance() }
+        }
+
+        // Now consume the word (or whatever block we're on) to its beginning
+        let blockType = scanner.currentType
+        while !scanner.isAtEnd && scanner.currentType == blockType && blockType != .whitespace {
+            scanner.advance()
+        }
+
         cursorPosition = scanner.index + 1
+    }
+
+    func moveCursorToBeginningOfFile() {
+        cursorPosition = 0
+    }
+
+    func moveCursorToEndOfFile() {
+        cursorPosition = text.count
+    }
+
+    func goToEndOfFile() {
+        moveCursorToEndOfFile()
+    }
+
+    func goToLine(_ line: Int) {
+        print("Going to line: \(line)")
+        // A count of 0 or 1 for 'G' goes to the first line.
+        // 'gg' also results in a call to goToLine(1).
+        if line <= 1 {
+            moveCursorToBeginningOfFile()
+        } 
+        // A count of Int.max signifies going to the last line.
+        else if line == Int.max {
+            moveCursorToEndOfFile()
+        }
+        else {
+            // This is a placeholder for real line-based navigation.
+            // For now, any other line number also goes to the end.
+            // TODO: Implement mapping a line number to a cursor index.
+            print("goToLine for specific number (\(line)) not yet implemented.")
+            moveCursorToEndOfFile()
+        }
+    }
+
+    func selectLine() {
+        let textAsNSString = text as NSString
+        let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
+        
+        // Adjust the cursor to the end of the line selection
+        cursorPosition = lineRange.location + lineRange.length
+    }
+
+    //==================================================
+    // MARK: - Editing primitives (used by operators)
+    //==================================================
+
+    func deleteToEndOfLine() {
+        let textAsNSString = text as NSString
+        let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
+        let endOfLine = lineRange.location + lineRange.length
+        
+        // If the line ends with a newline, we want to preserve it for 'D'
+        let rangeEnd = (endOfLine > lineRange.location && textAsNSString.character(at: endOfLine - 1) == 10) ? endOfLine - 1 : endOfLine
+        
+        let range = cursorPosition..<rangeEnd
+        delete(range: range)
+    }
+
+    func yankToEndOfLine() {
+        let textAsNSString = text as NSString
+        let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
+        let endOfLine = lineRange.location + lineRange.length
+        let rangeEnd = (endOfLine > lineRange.location && textAsNSString.character(at: endOfLine - 1) == 10) ? endOfLine - 1 : endOfLine
+        
+        let range = cursorPosition..<rangeEnd
+        yank(range: range)
+    }
+
+    func delete(range: Range<Int>) {
+        print("Deleting range: \(range)")
+        guard range.lowerBound >= 0,
+            range.upperBound <= text.count,
+            range.lowerBound < range.upperBound
+        else { 
+            print("Deletion aborted: invalid range.")
+            return 
+        }
+        let from = text.index(text.startIndex, offsetBy: range.lowerBound)
+        let to = text.index(text.startIndex, offsetBy: range.upperBound)
+        text.removeSubrange(from..<to)
+        cursorPosition = range.lowerBound
+    }
+
+    func change(range: Range<Int>) {
+        delete(range: range)
+        switchToInsertMode()
+    }
+
+    func yank(range: Range<Int>) {
+        // TODO: registers/clipboard
+        cursorPosition = range.lowerBound
+    }
+
+    func deleteCurrentCharacter() {
+        guard cursorPosition < text.count else { return }
+        let range = cursorPosition..<(cursorPosition + 1)
+        delete(range: range)
+    }
+
+    func deleteCharBackward() {
+        guard cursorPosition > 0 else { return }
+        let range = (cursorPosition - 1)..<cursorPosition
+        delete(range: range)
+        moveCursorLeft()
+    }
+
+    func changeToEndOfLine() {
+        deleteToEndOfLine()
+        switchToInsertMode()
+    }
+
+    enum TransformationType {
+        case lowercase
+        case uppercase
+        case swapCase
+    }
+
+    func transform(range: Range<Int>, to type: TransformationType) {
+        guard range.lowerBound >= 0,
+              range.upperBound <= text.count,
+              range.lowerBound < range.upperBound
+        else {
+            print("Transformation aborted: invalid range.")
+            return
+        }
+
+        let start = text.index(text.startIndex, offsetBy: range.lowerBound)
+        let end = text.index(text.startIndex, offsetBy: range.upperBound)
+        let subrange = text[start..<end]
+
+        let transformedText: String
+        switch type {
+        case .lowercase:
+            transformedText = subrange.lowercased()
+        case .uppercase:
+            transformedText = subrange.uppercased()
+        case .swapCase:
+            transformedText = subrange.map {
+                $0.isUppercase ? $0.lowercased() : $0.uppercased()
+            }.joined()
+        }
+
+        text.replaceSubrange(start..<end, with: transformedText)
+        cursorPosition = range.lowerBound
     }
 }

@@ -1,10 +1,12 @@
+import Foundation
 import SwiftUI
 
 // MARK: - Editor State Protocol
 protocol EditorModeState {
     var name: String { get }
     func insertionPointColor(settings: AppSettings) -> NSColor
-    // The one and only function for handling key press events.
+
+    /// Return true if the event is fully handled (prevent default text insertion), false to let the OS handle it.
     func handleEvent(_ keyEvent: KeyEvent, editor: EditorViewModel) -> Bool
 }
 
@@ -17,17 +19,18 @@ struct InsertModeState: EditorModeState {
     }
 
     func handleEvent(_ keyEvent: KeyEvent, editor: EditorViewModel) -> Bool {
-        print(
-            "[InsertModeState] handleEvent for key code: \(keyEvent.key?.rawValue ?? keyEvent.keyCode)"
-        )
+        // print(
+        //     "[InsertModeState] handleEvent for key code: \(keyEvent.key?.rawValue ?? keyEvent.keyCode)"
+        // )
 
+        // Escape leaves insert mode.
         if keyEvent.key == .escape {
             print("[InsertModeState] Detected Escape. Switching to Normal mode.")
             editor.switchToNormalMode()
             return true  // Event handled.
         }
 
-        print("[InsertModeState] Event not handled. Allowing default behavior.")
+        // Let system insert characters in Insert mode.
         return false
     }
 }
@@ -41,99 +44,70 @@ struct NormalModeState: EditorModeState {
     }
 
     func handleEvent(_ keyEvent: KeyEvent, editor: EditorViewModel) -> Bool {
-        // Use the new `mods` helper for cleaner logging and checks
-        // let charsForPrint =
-        //     keyEvent.characters?.replacingOccurrences(of: "\n", with: "<newline>")
-        //     .replacingOccurrences(of: "\r", with: "<return>") ?? "nil"
-        // print(
-        //     "[NormalModeState] handleEvent: key=\(keyEvent.key?.rawValue ?? 0), keyCode=\(keyEvent.keyCode), mods: shift=\(keyEvent.mods.isShift), ctrl=\(keyEvent.mods.isControl), opt=\(keyEvent.mods.isOption), cmd=\(keyEvent.mods.isCommand), chars=\(charsForPrint)"
-        // )
-
-        if let key = keyEvent.key {
-            switch key {
-            case .escape:
-                print("[NormalModeState] Escape pressed.")
-                editor.requestQuit()
-                return true
-
-            case .enter, .keypadEnter:
-                print("[NormalModeState] Enter pressed.")
-                editor.requestSubmit()
-                return true
-
-            // --- VIM MOTION KEYS ---
-            case .j:
-                if keyEvent.mods.isOnlyControl {
-                    print("[NormalModeState] Ctrl-j detected.")
-                    // Future: Add action for Ctrl-j
-                } else if keyEvent.mods.isUnmodified {
-                    editor.moveCursorDown()
-                }
-                return true
-            case .k:
-                if keyEvent.mods.isOnlyControl {
-                    print("[NormalModeState] Ctrl-k detected.")
-                } else if keyEvent.mods.isUnmodified {
-                    editor.moveCursorUp()
-                }
-                return true
-            case .h:
-                if keyEvent.mods.isUnmodified {
-                    editor.moveCursorLeft()
-                }
-                return true
-            case .l:
-                if keyEvent.mods.isUnmodified {
-                    editor.moveCursorRight()
-                }
-                return true
-            case .b:
-                if keyEvent.mods.isOnlyShift {
-                    editor.moveCursorBackwardByWord(isWORD: true)
-                } else if keyEvent.mods.isUnmodified {
-                    editor.moveCursorBackwardByWord()
-                }
-                return true
-            case .w:
-                if keyEvent.mods.isOnlyShift {
-                    editor.moveCursorForwardByWord(isWORD: true)
-                } else if keyEvent.mods.isUnmodified {
-                    editor.moveCursorForwardByWord()
-                }
-                return true
-
-            // --- VIM EDITING/MODE-SWITCH KEYS ---
-            case .i:
-                if keyEvent.characters == "I" {
-                    print(
-                        "[NormalModeState] 'I' detected. Switching to insert mode at start of line."
-                    )
-                    editor.moveCursorToBeginningOfLine()
-                    editor.switchToInsertMode()
-                } else {
-                    print("[NormalModeState] 'i' detected. Switching to insert mode.")
-                    editor.switchToInsertMode()
-                }
-                return true
-
-            case .a:
-                if keyEvent.characters == "A" {
-                    print(
-                        "[NormalModeState] 'A' detected. Switching to insert mode at end of line.")
-                    editor.moveCursorToEndOfLine()
-                    editor.switchToInsertMode()
-                } else {
-                    print("[NormalModeState] 'a' detected. Switching to insert mode after cursor.")
-                    editor.moveCursorToNextCharacter()
-                    editor.switchToInsertMode()
-                }
-                return true
-            }
+        // In Normal mode, we translate the KeyEvent to a EditorCommandToken
+        // and feed it to the state machine. We always return true to prevent
+        // the default system behavior (e.g., inserting a 'j' character).
+        if let token = EditorCommandToken.from(keyEvent: keyEvent) {
+            editor.handleToken(token)
         }
 
-        // If we fall through, it means no key-based command was handled.
-        // We still consume the event to prevent typing in normal mode.
-        print("[NormalModeState] Event not handled by any rule.")
+        // --- VIM MOTION KEYS ---
+        // case .j where keyEvent.mods.isOnlyControl:
+        //     Swift.print("[NormalModeState] Ctrl-j detected.")
+        //     // Future: Add action for Ctrl-j (scroll forward through history)
+        //     return true
+        // case .j where keyEvent.mods.isUnmodified:
+        //     editor.moveCursorDown()
+        //     return true
+        // case .k where keyEvent.mods.isOnlyControl:
+        //     // Future: Add action for Ctrl-k (scroll back through history)
+        //     Swift.print("[NormalModeState] Ctrl-k detected.")
+        // case .j where keyEvent.mods.isUnmodified:
+        //     editor.moveCursorUp()
+        //     return true
+        // case .h where keyEvent.mods.isUnmodified:
+        //     editor.moveCursorLeft()
+        //     return true
+        // case .l where keyEvent.mods.isUnmodified:
+        //     editor.moveCursorRight()
+        //     return true
+
+        // // --- VIM MOTION KEYS/WORD MOVEMENT ---
+        // case .b where keyEvent.mods.isOnlyShift:
+        //     editor.moveCursorBackwardByWord(isWORD: true)
+        //     return true
+        // case .b where keyEvent.mods.isUnmodified:
+        //     editor.moveCursorBackwardByWord()
+        //     return true
+        // case .w where keyEvent.mods.isOnlyShift:
+        //     editor.moveCursorForwardByWord(isWORD: true)
+        //     return true
+        // case .w where keyEvent.mods.isUnmodified:
+        //     editor.moveCursorForwardByWord()
+        //     return true
+
+        // // --- VIM EDITING/MODE-SWITCH KEYS ---
+        // case .i where keyEvent.mods.isOnlyShift:
+        //     editor.moveCursorToBeginningOfLine()
+        //     // TODO: should skip whitespace
+        //     editor.switchToInsertMode()
+        //     return true
+        // case .i where keyEvent.mods.isUnmodified:
+        //     editor.switchToInsertMode()
+        //     return true
+
+        // case .a where keyEvent.mods.isOnlyShift:
+        //     editor.moveCursorToEndOfLine()
+        //     editor.switchToInsertMode()
+        //     return true
+        // case .a where keyEvent.mods.isUnmodified:
+        //     editor.moveCursorToNextCharacter()
+        //     editor.switchToInsertMode()
+        //     return true
+        // default:
+        //     break
+        // }
+
         return true
     }
 }

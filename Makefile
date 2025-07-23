@@ -8,6 +8,7 @@ CONFIGURATION ?= Debug
 BUILD_DIR = build
 INSTALL_DIR ?= /Applications
 EXECUTABLE_PATH = "$(BUILD_DIR)/Build/Products/$(CONFIGURATION)/$(PROJECT_NAME).app/Contents/MacOS/$(PROJECT_NAME)"
+TESTS ?=
 
 .PHONY: all build clean run install lint test release generate
 
@@ -54,6 +55,7 @@ lint:
 	@echo "Linting..."
 	@swiftlint
 
-test:
+test: generate
 	@echo "Testing..."
-	@xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION) test
+	@xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION) \
+	$(foreach T,$(TESTS),-only-testing:$(T)) test

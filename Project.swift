@@ -40,10 +40,9 @@ let project = Project(
             deploymentTargets: .macOS("13.0"),
             infoPlist: .default,
             sources: ["Tests/**"],
-            dependencies: [
-                .target(name: "dicfix")
-            ]
-        )
+            resources: [],
+            dependencies: [.target(name: "dicfix")]
+        ),
     ],
     schemes: [
         .scheme(

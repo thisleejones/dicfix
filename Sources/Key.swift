@@ -29,7 +29,7 @@ struct Modifiers {
 
     let isShift: Bool
     let isControl: Bool
-    let isOption: Bool // Also known as the "Alt" key
+    let isOption: Bool  // Also known as the "Alt" key
     let isCommand: Bool
 
     // Check if no modifiers are pressed.
@@ -55,21 +55,78 @@ struct Modifiers {
 // An enum to provide meaningful names for CGKeyCode values.
 // This makes key handling code much more readable and avoids "magic numbers".
 enum Key: CGKeyCode {
-    // Editing Keys
+    // -- Numbers --
+    case zero = 29
+    case one = 18
+    case two = 19
+    case three = 20
+    case four = 21
+    case five = 23
+    case six = 22
+    case seven = 26
+    case eight = 28
+    case nine = 25
+
+    // -- Editing Keys --
     case a = 0
     case i = 34
+
 
     // Motion Keys
     case h = 4
     case j = 38
     case k = 40
     case l = 37
+    case g = 5
 
     case b = 11
     case w = 13
+
+    // Editing Keys
+    case d = 2
+    case y = 16
+    case c = 8
+    case x = 7
+    case u = 32
+    case tilde = 50
 
     // Action Keys
     case escape = 53
     case enter = 36
     case keypadEnter = 76
+}
+
+// 1) NormalizedKey distinguishes w vs W, b vs B, etc.
+enum NormalizedKey {
+    case w, W, b, B
+    case h, j, k, l
+    case d, y, c
+    case esc, enter
+    case digit(Int)
+    case other(String)
+
+    static func from(_ e: KeyEvent) -> NormalizedKey? {
+        guard let k = e.key else { return nil }
+
+        // digits (for counts)
+        if let s = e.characters, s.count == 1, let n = Int(s) {
+            return .digit(n)
+        }
+
+        switch k {
+        case .w: return e.mods.isOnlyShift ? .W : .w
+        case .b: return e.mods.isOnlyShift ? .B : .b
+        case .h: return .h
+        case .j: return .j
+        case .k: return .k
+        case .l: return .l
+        case .d: return .d
+        case .y: return .y
+        case .c: return .c
+        case .escape: return .esc
+        case .enter, .keypadEnter: return .enter
+        default:
+            return .other(e.characters ?? "")
+        }
+    }
 }

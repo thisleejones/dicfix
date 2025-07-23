@@ -1,0 +1,263 @@
+import XCTest
+@testable import dicfix
+
+// MARK: - Mock EditorViewModel
+
+class MockEditorViewModel: EditorViewModel {
+    var log: [String] = []
+
+    override func switchToInsertMode() {
+        log.append("switchToInsertMode")
+        super.switchToInsertMode()
+    }
+
+    override func switchToNormalMode() {
+        log.append("switchToNormalMode")
+        super.switchToNormalMode()
+    }
+
+    override func moveCursorToNextCharacter() {
+        log.append("moveCursorToNextCharacter")
+        super.moveCursorToNextCharacter()
+    }
+
+    override func moveCursorLeft() {
+        log.append("moveCursorLeft")
+        super.moveCursorLeft()
+    }
+
+    override func moveCursorRight() {
+        log.append("moveCursorRight")
+        super.moveCursorRight()
+    }
+
+    override func moveCursorUp() {
+        log.append("moveCursorUp")
+        super.moveCursorUp()
+    }
+
+    override func moveCursorDown() {
+        log.append("moveCursorDown")
+        super.moveCursorDown()
+    }
+
+    override func moveCursorForwardByWord(isWORD: Bool = false) {
+        log.append("moveCursorForwardByWord(isWORD: \(isWORD))")
+        super.moveCursorForwardByWord(isWORD: isWORD)
+    }
+
+    override func moveCursorBackwardByWord(isWORD: Bool = false) {
+        log.append("moveCursorBackwardByWord(isWORD: \(isWORD))")
+        super.moveCursorBackwardByWord(isWORD: isWORD)
+    }
+    
+    override func moveCursorToBeginningOfLine() {
+        log.append("moveCursorToBeginningOfLine")
+        super.moveCursorToBeginningOfLine()
+    }
+
+    override func goToLine(_ line: Int) {
+        log.append("goToLine(\(line))")
+        super.goToLine(line)
+    }
+
+    override func delete(range: Range<Int>) {
+        log.append("delete(range: \(range))")
+        super.delete(range: range)
+    }
+
+    override func yank(range: Range<Int>) {
+        log.append("yank(range: \(range))")
+        super.yank(range: range)
+    }
+
+    override func change(range: Range<Int>) {
+        log.append("change(range: \(range))")
+        super.change(range: range)
+    }
+    
+    override func deleteToEndOfLine() {
+        log.append("deleteToEndOfLine")
+        super.deleteToEndOfLine()
+    }
+    
+    override func yankToEndOfLine() {
+        log.append("yankToEndOfLine")
+        super.yankToEndOfLine()
+    }
+    
+    override func changeToEndOfLine() {
+        log.append("changeToEndOfLine")
+        super.changeToEndOfLine()
+    }
+    
+    override func deleteCurrentCharacter() {
+        log.append("deleteCurrentCharacter")
+        super.deleteCurrentCharacter()
+    }
+    
+    override func deleteCharBackward() {
+        log.append("deleteCharBackward")
+        super.deleteCharBackward()
+    }
+    
+    override func requestSubmit() {
+        log.append("requestSubmit")
+        super.requestSubmit()
+    }
+    
+    override func requestQuit() {
+        log.append("requestQuit")
+        super.requestQuit()
+    }
+}
+
+// MARK: - State Machine Tests
+
+class EditorCommandStateMachineTests: XCTestCase {
+    var stateMachine: EditorCommandStateMachine!
+    var editor: MockEditorViewModel!
+
+    override func setUp() {
+        super.setUp()
+        stateMachine = EditorCommandStateMachine()
+        editor = MockEditorViewModel()
+        editor.text = "one two three\nfour five six"
+        editor.cursorPosition = 0
+    }
+
+    // MARK: - Standalone Commands
+    
+    func testStandaloneCommands() {
+        stateMachine.handleToken(.switchToInsertMode, editor: editor)
+        XCTAssertEqual(editor.log.last, "switchToInsertMode")
+        
+        stateMachine.handleToken(.switchToInsertModeAndMove, editor: editor)
+        XCTAssertTrue(editor.log.contains("moveCursorToNextCharacter"))
+        XCTAssertTrue(editor.log.contains("switchToInsertMode"))
+        
+        stateMachine.handleToken(.deleteToEndOfLine, editor: editor)
+        XCTAssertEqual(editor.log.last, "deleteToEndOfLine")
+        
+        stateMachine.handleToken(.deleteChar, editor: editor)
+        XCTAssertEqual(editor.log.last, "deleteCurrentCharacter")
+    }
+
+    // MARK: - Motion Tests
+
+    func testSimpleMotion() {
+        stateMachine.handleToken(.wordForward, editor: editor)
+        XCTAssertEqual(editor.log, ["moveCursorForwardByWord(isWORD: false)"])
+    }
+
+    func testCountedMotion() {
+        stateMachine.handleToken(.digit(3), editor: editor)
+        stateMachine.handleToken(.wordForward, editor: editor)
+        XCTAssertEqual(editor.log, [
+            "moveCursorForwardByWord(isWORD: false)",
+            "moveCursorForwardByWord(isWORD: false)",
+            "moveCursorForwardByWord(isWORD: false)"
+        ])
+    }
+    
+    func testMultiDigitCountedMotion() {
+        stateMachine.handleToken(.digit(1), editor: editor)
+        stateMachine.handleToken(.digit(2), editor: editor)
+        stateMachine.handleToken(.lineDown, editor: editor)
+        
+        let expected = Array(repeating: "moveCursorDown", count: 12)
+        XCTAssertEqual(editor.log, expected)
+    }
+
+    // MARK: - Operator + Motion Tests
+
+    func testSimpleOperatorMotion() {
+        editor.cursorPosition = 0
+        stateMachine.handleToken(.delete, editor: editor)
+        stateMachine.handleToken(.wordForward, editor: editor)
+
+        // The motion is executed first to find the range
+        XCTAssertEqual(editor.log.first, "moveCursorForwardByWord(isWORD: false)")
+        // Then the operation is performed on the range
+        XCTAssertTrue(editor.log.contains("delete(range: 0..<4)"), "Log was: \(editor.log)")
+    }
+
+    func testCountedOperatorMotion() {
+        editor.cursorPosition = 0
+        stateMachine.handleToken(.digit(2), editor: editor)
+        stateMachine.handleToken(.delete, editor: editor)
+        stateMachine.handleToken(.wordForward, editor: editor)
+
+        XCTAssertEqual(editor.log, [
+            "moveCursorForwardByWord(isWORD: false)",
+            "moveCursorForwardByWord(isWORD: false)",
+            "delete(range: 0..<8)"
+        ])
+    }
+
+    // MARK: - Doubled Operator (Line-wise) Tests
+
+    func testDoubledOperator() {
+        editor.cursorPosition = 5 // middle of "one two three"
+        stateMachine.handleToken(.delete, editor: editor)
+        stateMachine.handleToken(.delete, editor: editor)
+        
+        // The motion is 'selectLine', then the operation is 'delete'
+        XCTAssertTrue(editor.log.contains("delete(range: 5..<13)"), "Log was: \(editor.log)")
+    }
+
+    func testCountedDoubledOperator() {
+        editor.cursorPosition = 0
+        stateMachine.handleToken(.digit(2), editor: editor)
+        stateMachine.handleToken(.yank, editor: editor)
+        stateMachine.handleToken(.yank, editor: editor)
+        
+        // Should select 2 lines then yank
+        XCTAssertTrue(editor.log.contains("yank(range: 0..<28)"), "Log was: \(editor.log)")
+    }
+    
+    // MARK: - Prefix Command Tests
+    
+    func testGoToFirstLineCommand() {
+        stateMachine.handleToken(.prefix("g"), editor: editor)
+        stateMachine.handleToken(.prefix("g"), editor: editor)
+        XCTAssertEqual(editor.log.last, "goToLine(1)")
+    }
+    
+    func testGoToLineCommand() {
+        stateMachine.handleToken(.digit(1), editor: editor)
+        stateMachine.handleToken(.digit(0), editor: editor)
+        stateMachine.handleToken(.goToEndOfFile, editor: editor) // G
+        XCTAssertEqual(editor.log.last, "goToLine(10)")
+    }
+
+    // MARK: - State Reset and Invalid Commands
+
+    func testInvalidSequenceResetsState() {
+        // Start with a valid operator
+        stateMachine.handleToken(.delete, editor: editor)
+        // Follow with an invalid token for this state
+        stateMachine.handleToken(.switchToInsertMode, editor: editor)
+        
+        // The state machine should reset, and the standalone command should execute.
+        XCTAssertEqual(editor.log, ["switchToInsertMode"])
+        
+        // Now try a simple motion to ensure we are back in idle
+        editor.log.removeAll()
+        stateMachine.handleToken(.wordForward, editor: editor)
+        XCTAssertEqual(editor.log, ["moveCursorForwardByWord(isWORD: false)"])
+    }
+    
+    func testZeroAsMotion() {
+        stateMachine.handleToken(.digit(0), editor: editor)
+        XCTAssertEqual(editor.log.last, "moveCursorToBeginningOfLine")
+    }
+    
+    func testZeroAsCount() {
+        stateMachine.handleToken(.digit(1), editor: editor)
+        stateMachine.handleToken(.digit(0), editor: editor) // count is 10
+        stateMachine.handleToken(.charLeft, editor: editor)
+        XCTAssertEqual(editor.log.count, 10)
+        XCTAssertEqual(editor.log.last, "moveCursorLeft")
+    }
+}
