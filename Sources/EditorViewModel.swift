@@ -109,9 +109,11 @@ class EditorViewModel: ObservableObject {
         if let visualMode = mode as? VisualModeState {
             let anchor = visualMode.anchor
             if cursorPosition < anchor {
-                selection = cursorPosition..<anchor
+                // Selection from cursor up to and including the anchor
+                selection = cursorPosition..<(anchor + 1)
             } else {
-                selection = anchor..<cursorPosition
+                // Selection from anchor up to and including the cursor
+                selection = anchor..<(cursorPosition + 1)
             }
         }
     }
@@ -246,6 +248,43 @@ class EditorViewModel: ObservableObject {
         cursorPosition = scanner.index
     }
 
+    func moveCursorToEndOfWord(isWORD: Bool = false) {
+        var scanner = TextScanner(text: text, index: cursorPosition, direction: .forward)
+        if scanner.isAtEnd { return }
+
+        // If cursor is not on whitespace, advance once to ensure we can find the *next* word end.
+        if scanner.currentType != .whitespace {
+            scanner.advance()
+            if scanner.isAtEnd { return }
+        }
+
+        // Skip any whitespace to find the beginning of the next word/WORD
+        while !scanner.isAtEnd && scanner.currentType == .whitespace {
+            scanner.advance()
+        }
+        if scanner.isAtEnd { return }
+
+        let startType = scanner.currentType
+        if isWORD {
+            // A WORD is a sequence of non-whitespace characters.
+            while !scanner.isAtEnd && scanner.currentType != .whitespace {
+                scanner.advance()
+            }
+        } else {
+            // A word is a sequence of the same character type (word or punctuation).
+            while !scanner.isAtEnd && scanner.currentType == startType {
+                scanner.advance()
+            }
+        }
+
+        // The scanner is now one position past the end of the word.
+        // To land on the last character, we move back one.
+        let finalPosition = scanner.index - 1
+        if finalPosition >= 0 {
+            cursorPosition = finalPosition
+        }
+    }
+
     func moveCursorBackwardByWord(isWORD: Bool = false) {
         if cursorPosition == 0 { return }
         var scanner = TextScanner(text: text, index: cursorPosition - 1, direction: .backward)
@@ -316,6 +355,24 @@ class EditorViewModel: ObservableObject {
         
         // Adjust the cursor to the end of the line selection
         cursorPosition = lineRange.location + lineRange.length
+    }
+
+    func openLineBelow() {
+        let textAsNSString = text as NSString
+        let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
+        let insertPosition = lineRange.location + lineRange.length
+        text.insert("\n", at: text.index(text.startIndex, offsetBy: insertPosition))
+        cursorPosition = insertPosition
+        switchToInsertMode()
+    }
+
+    func openLineAbove() {
+        let textAsNSString = text as NSString
+        let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
+        let insertPosition = lineRange.location
+        text.insert("\n", at: text.index(text.startIndex, offsetBy: insertPosition))
+        cursorPosition = insertPosition
+        switchToInsertMode()
     }
 
     //==================================================

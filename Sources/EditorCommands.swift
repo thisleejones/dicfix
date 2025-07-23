@@ -26,6 +26,8 @@ enum EditorMotion {
     case WORDForward
     case wordBackward
     case WORDBackward
+    case endOfWord
+    case endOfWORD
     case charLeft
     case charRight
     case lineUp
@@ -80,6 +82,8 @@ enum EditorCommandToken: Equatable {
     case WORDForward  // W
     case wordBackward  // b
     case WORDBackward  // B
+    case endOfWord // e
+    case endOfWORD // E
     case charLeft, charRight, lineUp, lineDown
     case goToEndOfFile  // G
     case goToStartOfLine  // 0
@@ -90,6 +94,8 @@ enum EditorCommandToken: Equatable {
     case switchToInsertMode
     case switchToInsertModeAndMove
     case switchToVisualMode
+    case openLineBelow
+    case openLineAbove
     case deleteToEndOfLine  // D
     case yankToEndOfLine  // Y
     case deleteChar // x
@@ -120,6 +126,8 @@ enum EditorCommandToken: Equatable {
         case .WORDForward: return .WORDForward
         case .wordBackward: return .wordBackward
         case .WORDBackward: return .WORDBackward
+        case .endOfWord: return .endOfWord
+        case .endOfWORD: return .endOfWORD
         case .charLeft: return .charLeft
         case .charRight: return .charRight
         case .lineUp: return .lineUp
@@ -150,6 +158,7 @@ enum EditorCommandToken: Equatable {
         // Shift-modified keys that have their own meaning
         if keyEvent.mods.isShift {
             switch k {
+            case .o: return .openLineAbove
             case .d: return .deleteToEndOfLine
             case .y: return .yankToEndOfLine
             case .g: return .goToEndOfFile  // Shift-g is G
@@ -173,6 +182,7 @@ enum EditorCommandToken: Equatable {
         // Motions
         case .w: return keyEvent.mods.isOnlyShift ? .WORDForward : .wordForward
         case .b: return keyEvent.mods.isOnlyShift ? .WORDBackward : .wordBackward
+        case .e: return keyEvent.mods.isOnlyShift ? .endOfWORD : .endOfWord
         case .h: return .charLeft
         case .l: return .charRight
         case .j: return .lineDown
@@ -184,6 +194,7 @@ enum EditorCommandToken: Equatable {
         // Standalone Commands
         case .i: return .switchToInsertMode
         case .a: return .switchToInsertModeAndMove
+        case .o: return .openLineBelow
         case .v: return .switchToVisualMode
         case .x: return .deleteChar
         case .`repeat`: return .repeatLastAction
@@ -243,6 +254,12 @@ final class EditorCommandStateMachine {
                 editor.switchToInsertMode()
             case .switchToVisualMode:
                 editor.switchToVisualMode()
+            case .openLineBelow:
+                editor.setLastAction(.standalone(token: token, count: 1))
+                editor.openLineBelow()
+            case .openLineAbove:
+                editor.setLastAction(.standalone(token: token, count: 1))
+                editor.openLineAbove()
             case .repeatLastAction:
                 editor.repeatLastAction()
             case .deleteToEndOfLine:
@@ -364,6 +381,8 @@ final class EditorCommandStateMachine {
             case .WORDForward: editor.moveCursorForwardByWord(isWORD: true)
             case .wordBackward: editor.moveCursorBackwardByWord(isWORD: false)
             case .WORDBackward: editor.moveCursorBackwardByWord(isWORD: true)
+            case .endOfWord: editor.moveCursorToEndOfWord(isWORD: false)
+            case .endOfWORD: editor.moveCursorToEndOfWord(isWORD: true)
             case .charLeft: editor.moveCursorLeft()
             case .charRight: editor.moveCursorRight()
             case .lineUp: editor.moveCursorUp()
@@ -395,6 +414,10 @@ final class EditorCommandStateMachine {
                     editor.deleteCurrentCharacter()
                 case .deleteCharBackward:
                     editor.deleteCharBackward()
+                case .openLineBelow:
+                    editor.openLineBelow()
+                case .openLineAbove:
+                    editor.openLineAbove()
                 default:
                     print("[EditorCommandStateMachine] Non-repeatable standalone action: \(token)")
                 }

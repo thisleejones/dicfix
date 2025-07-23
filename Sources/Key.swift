@@ -70,6 +70,7 @@ enum Key: CGKeyCode {
     // -- Editing Keys --
     case a = 0
     case i = 34
+    case o = 31
 
 
     // Motion Keys
@@ -81,6 +82,7 @@ enum Key: CGKeyCode {
 
     case b = 11
     case w = 13
+    case e = 14
 
     // Editing Keys
     case d = 2

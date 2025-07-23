@@ -14,6 +14,7 @@ struct EditorView: View {
             viewModel: viewModel, // Pass the viewModel to the text field
             onSubmit: onSubmit
         )
+        .frame(height: CGFloat(settingsManager.settings.fontSize * 8) * 1.2)
         .onChange(of: viewModel.text) { newText in
             self.text = newText
         }
