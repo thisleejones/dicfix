@@ -1,5 +1,21 @@
 import SwiftUI
 
+// MARK: - String extension for line-based calculations
+public extension String {
+    struct Line {
+        public let content: String
+        public let range: Range<Int>
+    }
+
+    func currentLine(at cursorPosition: Int) -> Line {
+        let textAsNSString = self as NSString
+        let lineNSRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
+        let lineRange = lineNSRange.location..<lineNSRange.upperBound
+        let lineContent = textAsNSString.substring(with: lineNSRange)
+        return Line(content: lineContent, range: lineRange)
+    }
+}
+
 // MARK: - Editor View Model (State Machine)
 open class EditorViewModel: ObservableObject {
     @Published public var text: String = ""
@@ -177,7 +193,9 @@ open class EditorViewModel: ObservableObject {
     }
 
     public func moveCursorRight() {
-        if cursorPosition < text.count {
+        let line = text.currentLine(at: cursorPosition)
+        let endOfLineOffset = line.range.upperBound - 1
+        if cursorPosition < endOfLineOffset {
             cursorPosition += 1
         }
         desiredColumn = nil

@@ -138,6 +138,32 @@ class EditorViewModelTests: XCTestCase {
         XCTAssertEqual(editor.cursorPosition, 7, "Failed on a line with only whitespace")
     }
 
+    // MARK: - Character Movement
+
+    func testMoveCursorLeftAndRight() {
+        editor.text = "abc"
+        editor.cursorPosition = 1 // 'b'
+
+        // Test 'l' - move right
+        editor.moveCursorRight()
+        XCTAssertEqual(editor.cursorPosition, 2, "Failed to move right") // 'c'
+
+        // Test 'l' at end of line
+        editor.moveCursorRight()
+        XCTAssertEqual(editor.cursorPosition, 2, "Should not move past end of line")
+
+        // Test 'h' - move left
+        editor.moveCursorLeft()
+        XCTAssertEqual(editor.cursorPosition, 1, "Failed to move left") // 'b'
+
+        // Test 'h' at start of line
+        editor.moveCursorLeft()
+        XCTAssertEqual(editor.cursorPosition, 0, "Failed to move to start of line") // 'a'
+        
+        editor.moveCursorLeft()
+        XCTAssertEqual(editor.cursorPosition, 0, "Should not move past start of line")
+    }
+
     // MARK: - Editing Tests
 
     func testOpenLineBelow() {
