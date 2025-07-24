@@ -126,6 +126,11 @@ class MockEditorViewModel: EditorViewModel {
         log.append("transform(range: \(range), to: .\(type))")
         super.transform(range: range, to: type)
     }
+
+    override func moveCursorToCharacter(_ character: Character, forward: Bool, till: Bool) {
+        log.append("moveCursorToCharacter(\"\(character)\", forward: \(forward), till: \(till))")
+        super.moveCursorToCharacter(character, forward: forward, till: till)
+    }
 }
 
 // MARK: - State Machine Tests
@@ -279,6 +284,50 @@ class EditorCommandStateMachineTests: XCTestCase {
         stateMachine.handleToken(.charLeft, editor: editor)
         XCTAssertEqual(editor.log.count, 10)
         XCTAssertEqual(editor.log.last, "moveCursorLeft")
+    }
+
+    func testFindCharacter() {
+        editor.text = "one two three"
+        editor.cursorPosition = 0
+
+        // Simulate "ft"
+        stateMachine.handleToken(.prefix("f"), editor: editor)
+        stateMachine.handleToken(.argument("t"), editor: editor)
+
+        XCTAssertEqual(editor.log.last, "moveCursorToCharacter(\"t\", forward: true, till: false)")
+    }
+
+    func testFindCharacterBackward() {
+        editor.text = "one two three"
+        editor.cursorPosition = 10  // "h" of "three"
+
+        // Simulate "Ft"
+        stateMachine.handleToken(.prefix("F"), editor: editor)
+        stateMachine.handleToken(.argument("t"), editor: editor)
+
+        XCTAssertEqual(editor.log.last, "moveCursorToCharacter(\"t\", forward: false, till: false)")
+    }
+
+    func testTillCharacterForward() {
+        editor.text = "one two three"
+        editor.cursorPosition = 0
+
+        // Simulate "tt"
+        stateMachine.handleToken(.prefix("t"), editor: editor)
+        stateMachine.handleToken(.argument("t"), editor: editor)
+
+        XCTAssertEqual(editor.log.last, "moveCursorToCharacter(\"t\", forward: true, till: true)")
+    }
+
+    func testTillCharacterBackward() {
+        editor.text = "one two three"
+        editor.cursorPosition = 10
+
+        // Simulate "Tt"
+        stateMachine.handleToken(.prefix("T"), editor: editor)
+        stateMachine.handleToken(.argument("t"), editor: editor)
+
+        XCTAssertEqual(editor.log.last, "moveCursorToCharacter(\"t\", forward: false, till: true)")
     }
 }
 

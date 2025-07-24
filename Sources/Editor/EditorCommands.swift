@@ -34,6 +34,7 @@ public enum EditorMotion {
     case lineDown
     case goToEndOfFile
     case goToStartOfLine  // For '0' and 'g0'
+    case goToFirstLine  // For 'gg'
     case line  // Represents a line-wise motion, for 'dd', 'yy'
     case screenLineDown
     case screenLineUp
@@ -66,6 +67,9 @@ public enum EditorCommandToken: Equatable {
     // A token that starts a sequence, like 'g' in 'gg'
     case prefix(Character)
 
+    // The character argument for a command like 'f'
+    case argument(Character)
+
     // Numbers build counts
     case digit(Int)
 
@@ -85,6 +89,7 @@ public enum EditorCommandToken: Equatable {
     case endOfWord  // e
     case endOfWORD  // E
     case charLeft, charRight, lineUp, lineDown
+    case goToFirstLine  // gg
     case goToEndOfFile  // G
     case goToStartOfLine  // 0
     case screenLineStartNonBlank  // ^
@@ -137,6 +142,7 @@ public enum EditorCommandToken: Equatable {
         case .lineDown: return .lineDown
         case .goToEndOfFile: return .goToEndOfFile
         case .goToStartOfLine: return .goToStartOfLine
+        case .goToFirstLine: return .goToFirstLine
         case .screenLineStartNonBlank: return .screenLineStartNonBlank
         case .screenLineEnd: return .screenLineEnd
         default: return nil
@@ -148,8 +154,15 @@ public enum EditorCommandToken: Equatable {
         return nil
     }
 
-    static func from(keyEvent: KeyEvent) -> EditorCommandToken? {
+    static func from(keyEvent: KeyEvent, state: EditorCommandState) -> EditorCommandToken? {
         guard let k = keyEvent.key else { return nil }
+
+        // If we are waiting for a suffix, any character is an argument.
+        if case .waitingForSuffix = state {
+            if let char = keyEvent.characters?.first {
+                return .argument(char)
+            }
+        }
 
         // Digits (counts)
         if let chars = keyEvent.characters, chars.count == 1, let d = Int(chars) {
@@ -202,8 +215,9 @@ public enum EditorCommandToken: Equatable {
         case .k: return .lineUp
 
         // Prefixes
+        case .f: return keyEvent.mods.isOnlyShift ? .prefix("F") : .prefix("f")
+        case .t: return keyEvent.mods.isOnlyShift ? .prefix("T") : .prefix("t")
         case .g: return .prefix("g")
-
         // Standalone Commands
         case .i: return .switchToInsertMode
         case .a: return .switchToInsertModeAndMove
@@ -216,13 +230,18 @@ public enum EditorCommandToken: Equatable {
         case .escape: return .requestQuit  // In normal mode, escape is for quitting.
         case .tilde: return .swapCase
 
-        default: return .unknown(keyEvent.characters ?? "")
+        default:
+            // If no other token matches, and we have a single character, treat it as an argument.
+            if let char = keyEvent.characters?.first {
+                return .argument(char)
+            }
+            return .unknown(keyEvent.characters ?? "")
         }
     }
 }
 
 public final class EditorCommandStateMachine {
-    private var state: EditorCommandState = .idle
+    public private(set) var state: EditorCommandState = .idle
 
     public init() {}
 
@@ -311,9 +330,37 @@ public final class EditorCommandStateMachine {
     ) {
         var handled = false
         switch prefix {
+        case .prefix("f"):
+            if case .argument(let char) = token {
+                for _ in 0..<count {
+                    editor.moveCursorToCharacter(char, forward: true, till: false)
+                }
+                handled = true
+            }
+        case .prefix("F"):
+            if case .argument(let char) = token {
+                for _ in 0..<count {
+                    editor.moveCursorToCharacter(char, forward: false, till: false)
+                }
+                handled = true
+            }
+        case .prefix("t"):
+            if case .argument(let char) = token {
+                for _ in 0..<count {
+                    editor.moveCursorToCharacter(char, forward: true, till: true)
+                }
+                handled = true
+            }
+        case .prefix("T"):
+            if case .argument(let char) = token {
+                for _ in 0..<count {
+                    editor.moveCursorToCharacter(char, forward: false, till: true)
+                }
+                handled = true
+            }
         case .prefix("g"):
-            if case .prefix("g") = token {  // gg
-                editor.goToLine(1)
+            if case .prefix("g") = prefix, token == .prefix("g") {  // gg
+                executeMotion(.goToFirstLine, count: count, editor: editor)
                 handled = true
             } else if case .digit(0) = token {  // g0
                 executeMotion(.goToStartOfLine, count: count, editor: editor)
@@ -416,6 +463,7 @@ public final class EditorCommandStateMachine {
             case .lineUp: editor.moveCursorUp()
             case .lineDown: editor.moveCursorDown()
             case .goToStartOfLine: editor.moveCursorToBeginningOfLine()
+            case .goToFirstLine: editor.goToLine(1)
             case .screenLineDown: editor.moveCursorScreenLineDown()
             case .screenLineUp: editor.moveCursorScreenLineUp()
             case .screenLineStartNonBlank: editor.moveCursorToScreenLineStartNonBlank()
@@ -473,7 +521,8 @@ public final class EditorCommandStateMachine {
                 var endOfLine = lineNSRange.upperBound
                 for _ in 1..<count {
                     if endOfLine >= editor.text.count { break }
-                    let nextLineRange = textAsNSString.lineRange(for: NSRange(location: endOfLine, length: 0))
+                    let nextLineRange = textAsNSString.lineRange(
+                        for: NSRange(location: endOfLine, length: 0))
                     endOfLine = nextLineRange.upperBound
                 }
                 lineNSRange.length = endOfLine - lineNSRange.location
@@ -482,7 +531,9 @@ public final class EditorCommandStateMachine {
             // For transformations, exclude the trailing newline. For others, include it.
             let isTransform = op == .lowercase || op == .uppercase || op == .swapCase
             if isTransform {
-                if lineNSRange.length > 0 && textAsNSString.character(at: lineNSRange.upperBound - 1) == 10 {
+                if lineNSRange.length > 0
+                    && textAsNSString.character(at: lineNSRange.upperBound - 1) == 10
+                {
                     return lineNSRange.location..<(lineNSRange.upperBound - 1)
                 }
             }

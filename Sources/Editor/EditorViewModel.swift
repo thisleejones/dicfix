@@ -298,6 +298,32 @@ open class EditorViewModel: ObservableObject {
         moveCursorToEndOfLine()
     }
 
+    public func moveCursorToCharacter(_ character: Character, forward: Bool, till: Bool) {
+        let line = text.currentLine(at: cursorPosition)
+        let lineContent = Array(line.content)
+        let cursorRelativePos = cursorPosition - line.range.lowerBound
+
+        // Define the search range on the current line
+        let searchRange: any Sequence<Int> = forward
+            ? (cursorRelativePos + 1)..<lineContent.count
+            : (0..<cursorRelativePos).reversed()
+
+        var foundIndex: Int?
+
+        // Find the first occurrence of the character in the search range
+        for i in searchRange {
+            if lineContent[i] == character {
+                foundIndex = i
+                break
+            }
+        }
+
+        if let finalIndex = foundIndex {
+            let offset = till ? (forward ? -1 : 1) : 0
+            cursorPosition = line.range.lowerBound + finalIndex + offset
+        }
+    }
+
     // MARK: - Word Movement Logic
     private struct TextScanner {
         enum CharType { case word, punctuation, whitespace }

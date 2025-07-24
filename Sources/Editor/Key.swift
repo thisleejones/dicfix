@@ -79,10 +79,18 @@ public enum Key: CGKeyCode {
     case k = 40
     case l = 37
     case g = 5
+    case m = 46
+    case n = 45
 
     case b = 11
     case w = 13
     case e = 14
+    case f = 3
+    case r = 15
+    case t = 17
+    case q = 12
+    case s = 1
+    case z = 6
 
     // Editing Keys
     case d = 2

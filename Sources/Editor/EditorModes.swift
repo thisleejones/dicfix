@@ -65,7 +65,7 @@ public struct NormalModeState: EditorModeState {
         // In Normal mode, we translate the KeyEvent to a EditorCommandToken
         // and feed it to the state machine. We always return true to prevent
         // the default system behavior (e.g., inserting a 'j' character).
-        if let token = EditorCommandToken.from(keyEvent: keyEvent) {
+        if let token = EditorCommandToken.from(keyEvent: keyEvent, state: editor.commandSM.state) {
             editor.handleToken(token)
         }
 
@@ -93,7 +93,7 @@ public struct VisualModeState: EditorModeState {
             return true
         }
 
-        if let token = EditorCommandToken.from(keyEvent: keyEvent) {
+        if let token = EditorCommandToken.from(keyEvent: keyEvent, state: editor.commandSM.state) {
             handleToken(token, editor: editor)
         }
 
@@ -146,7 +146,7 @@ public struct VisualLineModeState: EditorModeState {
             return true
         }
 
-        if let token = EditorCommandToken.from(keyEvent: keyEvent) {
+        if let token = EditorCommandToken.from(keyEvent: keyEvent, state: editor.commandSM.state) {
             handleToken(token, editor: editor)
         }
 

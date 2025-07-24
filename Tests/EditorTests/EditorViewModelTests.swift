@@ -436,6 +436,25 @@ class EditorViewModelTests: XCTestCase {
                 XCTAssertEqual(editor.cursorPosition, 0)
         }
 
+        // MARK: - Character Search Tests
+        func testMoveToCharacter() {
+                editor.text = "one two three"
+                editor.cursorPosition = 0  // "o"
+
+                // Simulate "ft"
+                editor.moveCursorToCharacter("t", forward: true, till: false)
+                XCTAssertEqual(editor.cursorPosition, 4)  // "t" of "two"
+
+                // Simulate "fe" from new position
+                editor.moveCursorToCharacter("e", forward: true, till: false)
+                XCTAssertEqual(editor.cursorPosition, 11)  // "e" of "three"
+
+                // Test searching for a character that doesn't exist after the cursor
+                let originalPosition = editor.cursorPosition
+                editor.moveCursorToCharacter("z", forward: true, till: false)
+                XCTAssertEqual(editor.cursorPosition, originalPosition)  // Cursor should not move
+        }
+
         // MARK: - Visual Line Mode Tests
 
         func testVisualLineModeDelete() {
@@ -457,12 +476,11 @@ class EditorViewModelTests: XCTestCase {
 
                 // Apply the delete operator ('d')
                 guard let selection = editor.selection else {
-                    XCTFail("Selection should not be nil")
-                    return
+                        XCTFail("Selection should not be nil")
+                        return
                 }
                 editor.delete(range: selection)
                 editor.switchToNormalMode()
-
 
                 // The first two lines should be deleted
                 XCTAssertEqual(editor.text, "line three")
@@ -493,8 +511,8 @@ class EditorViewModelTests: XCTestCase {
 
                 // Apply the yank operator ('y')
                 guard let selection = editor.selection else {
-                    XCTFail("Selection should not be nil")
-                    return
+                        XCTFail("Selection should not be nil")
+                        return
                 }
                 editor.yank(range: selection)
                 editor.switchToNormalMode()
