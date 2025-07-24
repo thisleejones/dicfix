@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-struct KeycodeMapper {
+public struct KeycodeMapper {
     private static let keyMap: [String: CGKeyCode] = [
         "F1": 122,
         "F2": 120,

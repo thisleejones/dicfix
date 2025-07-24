@@ -46,13 +46,13 @@ let project = Project(
             dependencies: []
         ),
         .target(
-            name: "dicfixTests",
+            name: "EditorTests",
             destinations: .macOS,
             product: .unitTests,
-            bundleId: "io.leejones.dicfixTests",
+            bundleId: "io.leejones.dicfix.EditorTests",
             deploymentTargets: .macOS("13.0"),
             infoPlist: .default,
-            sources: ["Tests/**"],
+            sources: ["Tests/EditorTests/**"],
             dependencies: [.target(name: "Editor")]
         ),
     ],
@@ -60,7 +60,7 @@ let project = Project(
         .scheme(
             name: "dicfix",
             buildAction: .buildAction(targets: ["dicfix"]),
-            testAction: .targets(["dicfixTests"]),
+            testAction: .targets(["EditorTests"]),
             runAction: .runAction(executable: "dicfix")
         )
     ]

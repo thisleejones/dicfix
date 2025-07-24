@@ -1,7 +1,7 @@
 import SwiftUI
 
 // MARK: - Editor View Model (State Machine)
-public class EditorViewModel: ObservableObject {
+open class EditorViewModel: ObservableObject {
     @Published public var text: String = ""
     @Published public var cursorPosition: Int = 0 {
         didSet {
@@ -408,8 +408,8 @@ public class EditorViewModel: ObservableObject {
         let textAsNSString = text as NSString
         let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
         
-        // Adjust the cursor to the end of the line selection
-        cursorPosition = lineRange.location + lineRange.length
+        // Adjust the cursor to the end of the line selection, including the newline character.
+        cursorPosition = lineRange.upperBound
     }
 
     public func openLineBelow() {
@@ -511,10 +511,19 @@ public class EditorViewModel: ObservableObject {
         if register.last == "\n" {
             let textAsNSString = text as NSString
             let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
-            let insertPosition = lineRange.location + lineRange.length
+            let insertPosition = lineRange.upperBound
             let index = text.index(text.startIndex, offsetBy: insertPosition)
-            text.insert(contentsOf: register, at: index)
-            cursorPosition = insertPosition // Move cursor to beginning of pasted line
+            
+            // If we are pasting after a line that doesn't have a newline (i.e., the last line of the file),
+            // we must first add a newline to place the pasted content on the line below.
+            let needsLeadingNewline = insertPosition > 0 && textAsNSString.character(at: insertPosition - 1) != 10
+            let contentToInsert = needsLeadingNewline ? "\n" + register : register
+            
+            text.insert(contentsOf: contentToInsert, at: index)
+            
+            // The cursor should move to the beginning of the *actual* pasted content.
+            // If we prepended a newline, this is one character after the insertion point.
+            cursorPosition = needsLeadingNewline ? insertPosition + 1 : insertPosition
         } else {
             // Otherwise, paste after the cursor.
             let insertPosition = cursorPosition + 1
