@@ -115,7 +115,6 @@ open class EditorViewModel: ObservableObject {
     }
 
     private func updateSelection() {
-        desiredColumn = nil
         if let visualMode = mode as? VisualModeState {
             let anchor = visualMode.anchor
             if cursorPosition < anchor {
@@ -200,6 +199,7 @@ open class EditorViewModel: ObservableObject {
 
         let lineContentLength = nextLineRange.length > 0 && textAsNSString.character(at: nextLineRange.upperBound - 1) == 10 ? nextLineRange.length - 1 : nextLineRange.length
         let targetColumn = min(column, max(0, lineContentLength > 0 ? lineContentLength - 1 : lineContentLength))
+        print("column: \(column), desiredColumn: \(String(describing: desiredColumn)), lineContentLength: \(lineContentLength), targetColumn: \(targetColumn)")
 
         cursorPosition = nextLineRange.location + targetColumn
     }
@@ -572,7 +572,6 @@ open class EditorViewModel: ObservableObject {
         guard cursorPosition > 0 else { return }
         let range = (cursorPosition - 1)..<cursorPosition
         delete(range: range)
-        moveCursorLeft()
     }
 
     public func changeToEndOfLine() {

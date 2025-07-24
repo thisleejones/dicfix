@@ -167,11 +167,16 @@ bindings = [
 
 ## Building from Source
 
-This project uses a `Makefile` to simplify the build process. It relies on [Tuist](https://tuist.io) to generate the Xcode project.
+This project uses a `Makefile` to simplify the build process. It relies on [Tuist](https://tuist.io) to generate the Xcode project. For a cleaner test output, it is recommended to install [xcbeautify](https://github.com/tuist/xcbeautify).
 
-1.  **Install Tuist**: If you don't have Tuist, you can install it easily.
+1.  **Install Tuist and xcbeautify**:
+    If you don't have them, you can install them easily.
     ```bash
+    # Install Tuist
     curl -Ls https://tuist.io/install.sh | bash
+
+    # Install xcbeautify (optional, for cleaner test output)
+    brew install xcbeautify
     ```
 
 2.  **Clone the repository**:
@@ -192,6 +197,11 @@ This project uses a `Makefile` to simplify the build process. It relies on [Tuis
 -   **Run the app**:
     ```bash
     make run
+    ```
+
+-   **Run tests**:
+    ```bash
+    make test
     ```
 
 -   **Run with arguments**:

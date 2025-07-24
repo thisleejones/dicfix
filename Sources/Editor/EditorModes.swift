@@ -57,7 +57,8 @@ public struct NormalModeState: EditorModeState {
     public init() {}
 
     public func insertionPointColor(settings: EditorSettings) -> NSColor {
-        return .clear
+        return NSColor(settings.textColor)
+        // return .clear
     }
 
     public func handleEvent(_ keyEvent: KeyEvent, editor: EditorViewModel) -> Bool {

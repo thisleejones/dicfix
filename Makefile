@@ -24,11 +24,12 @@ generate:
 	@tuist generate --no-open
 
 build: generate
-
-
-build:
 	@echo "Building $(PROJECT_NAME) with $(CONFIGURATION) configuration..."
-	@xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION) -derivedDataPath $(BUILD_DIR) build
+	@if command -v xcbeautify &> /dev/null; then \
+		xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION) -derivedDataPath $(BUILD_DIR) build | xcbeautify --disable-logging; \
+	else \
+		xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION) -derivedDataPath $(BUILD_DIR) build; \
+	fi
 
 clean:
 	@echo "Cleaning..."
@@ -57,5 +58,10 @@ lint:
 
 test: generate
 	@echo "Testing..."
-	@xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION) \
-	$(foreach T,$(TESTS),-only-testing:$(T)) test
+	@if command -v xcbeautify &> /dev/null; then \
+		xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION) \
+		$(foreach T,$(TESTS),-only-testing:$(T)) test | xcbeautify --disable-logging; \
+	else \
+		xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION) \
+		$(foreach T,$(TESTS),-only-testing:$(T)) test; \
+	fi
