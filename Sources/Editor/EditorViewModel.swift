@@ -320,42 +320,34 @@ open class EditorViewModel: ObservableObject {
         var scanner = TextScanner(text: text, index: cursorPosition, direction: .forward)
         if !scanner.canAdvance() { return }
 
+        let charType = scanner.currentType
+        
         if isWORD {
-            // WORD = run of non-whitespace
-            if scanner.currentType != .whitespace {
+            // For WORD, if we are on non-whitespace, skip it all.
+            if charType != .whitespace {
                 while scanner.canAdvance() && scanner.currentType != .whitespace {
                     scanner.advance()
                 }
-            } else {
-                while scanner.canAdvance() && scanner.currentType == .whitespace {
+            }
+            // Then, skip all subsequent whitespace to land on the start of the next WORD.
+            while scanner.canAdvance() && scanner.currentType == .whitespace {
+                scanner.advance()
+            }
+        } else {
+            // For word, the logic is more complex.
+            if charType == .word || charType == .punctuation {
+                // 1. If on a word or punctuation, skip to the end of it.
+                let currentType = scanner.currentType
+                while scanner.canAdvance() && scanner.currentType == currentType {
                     scanner.advance()
                 }
             }
-            while scanner.canAdvance() && scanner.currentType == .whitespace { scanner.advance() }
-            cursorPosition = scanner.index
-            return
+            // 2. Then, skip any and all whitespace to land on the next word.
+            while scanner.canAdvance() && scanner.currentType == .whitespace {
+                scanner.advance()
+            }
         }
-
-        let startType = scanner.currentType
-
-        if startType == .whitespace {
-            // Jump to first non-space token
-            while scanner.canAdvance() && scanner.currentType == .whitespace { scanner.advance() }
-            cursorPosition = scanner.index
-            return
-        }
-
-        // Consume current run (word or punctuation)
-        while scanner.canAdvance() && scanner.currentType == startType { scanner.advance() }
-
-        // If we just consumed a word, also skip the punctuation block right after it
-        if startType == .word {
-            while scanner.canAdvance() && scanner.currentType == .punctuation { scanner.advance() }
-        }
-
-        // Skip trailing whitespace to land at next token start
-        while scanner.canAdvance() && scanner.currentType == .whitespace { scanner.advance() }
-
+        
         cursorPosition = scanner.index
     }
 

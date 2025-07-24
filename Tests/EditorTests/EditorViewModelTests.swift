@@ -298,4 +298,70 @@ class EditorViewModelTests: XCTestCase {
         XCTAssertEqual(editor.text, "abc\nd")
         XCTAssertEqual(editor.cursorPosition, 4)
     }
+
+    func testForwardWordWithComplexWhitespace() {
+        editor.text = "   but line is going to be this long."
+        // Indices:
+        // "   but" -> 0..5
+        // " line" -> 6..10
+        // " is" -> 11..13
+        
+        // Start at the beginning of "but"
+        editor.cursorPosition = 3
+        
+        // Test 'w'
+        editor.moveCursorForwardByWord()
+        XCTAssertEqual(editor.cursorPosition, 7, "w from 'but' should land on 'line'")
+        
+        editor.moveCursorForwardByWord()
+        XCTAssertEqual(editor.cursorPosition, 12, "w from 'line' should land on 'is'")
+        
+        editor.moveCursorForwardByWord()
+        XCTAssertEqual(editor.cursorPosition, 15, "w from 'is' should land on 'going'")
+        
+        // Reset and test 'W'
+        editor.cursorPosition = 3
+        
+        editor.moveCursorForwardByWord(isWORD: true)
+        XCTAssertEqual(editor.cursorPosition, 7, "W from 'but' should land on 'line'")
+        
+        editor.moveCursorForwardByWord(isWORD: true)
+        XCTAssertEqual(editor.cursorPosition, 12, "W from 'line' should land on 'is'")
+        
+        editor.moveCursorForwardByWord(isWORD: true)
+        XCTAssertEqual(editor.cursorPosition, 15, "W from 'is' should land on 'going'")
+    }
+
+    func testBackwardWordWithComplexWhitespace() {
+        editor.text = "   but line is going to be this long."
+        // Indices:
+        // "   but" -> 0..5
+        // " line" -> 6..10
+        // " is" -> 11..13
+        
+        // Start at the beginning of "going"
+        editor.cursorPosition = 15
+        
+        // Test 'b'
+        editor.moveCursorBackwardByWord()
+        XCTAssertEqual(editor.cursorPosition, 12, "b from 'going' should land on 'is'")
+        
+        editor.moveCursorBackwardByWord()
+        XCTAssertEqual(editor.cursorPosition, 7, "b from 'is' should land on 'line'")
+        
+        editor.moveCursorBackwardByWord()
+        XCTAssertEqual(editor.cursorPosition, 3, "b from 'line' should land on 'but'")
+        
+        // Reset and test 'B'
+        editor.cursorPosition = 15
+        
+        editor.moveCursorBackwardByWord(isWORD: true)
+        XCTAssertEqual(editor.cursorPosition, 12, "B from 'going' should land on 'is'")
+        
+        editor.moveCursorBackwardByWord(isWORD: true)
+        XCTAssertEqual(editor.cursorPosition, 7, "B from 'is' should land on 'line'")
+        
+        editor.moveCursorBackwardByWord(isWORD: true)
+        XCTAssertEqual(editor.cursorPosition, 3, "B from 'line' should land on 'but'")
+    }
 }
