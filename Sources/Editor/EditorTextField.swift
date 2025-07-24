@@ -128,6 +128,12 @@ public struct EditorTextField: NSViewRepresentable {
             parent.cursorPosition = textView.selectedRange.location
         }
 
+        // Delegate method for selection changes (mouse, arrow keys).
+        public func textViewDidChangeSelection(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            parent.cursorPosition = textView.selectedRange.location
+        }
+
         // Delegate method for command keys (Enter, Escape, etc.).
         public func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
             if commandSelector == #selector(NSResponder.insertNewline(_:)) {
