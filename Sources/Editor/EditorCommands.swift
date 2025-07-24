@@ -458,18 +458,47 @@ public final class EditorCommandStateMachine {
         }
     }
 
+    private func getRange(
+        op: EditorOperator, motion: EditorMotion, count: Int, editor: EditorViewModel
+    ) -> Range<Int> {
+        let startPos = editor.cursorPosition
+        executeMotion(motion, count: count, editor: editor)
+        let endPos = editor.cursorPosition
+
+        if motion == .line {
+            let textAsNSString = editor.text as NSString
+            var lineNSRange = textAsNSString.lineRange(for: NSRange(location: startPos, length: 0))
+
+            if count > 1 {
+                var endOfLine = lineNSRange.upperBound
+                for _ in 1..<count {
+                    if endOfLine >= editor.text.count { break }
+                    let nextLineRange = textAsNSString.lineRange(for: NSRange(location: endOfLine, length: 0))
+                    endOfLine = nextLineRange.upperBound
+                }
+                lineNSRange.length = endOfLine - lineNSRange.location
+            }
+
+            // For transformations, exclude the trailing newline. For others, include it.
+            let isTransform = op == .lowercase || op == .uppercase || op == .swapCase
+            if isTransform {
+                if lineNSRange.length > 0 && textAsNSString.character(at: lineNSRange.upperBound - 1) == 10 {
+                    return lineNSRange.location..<(lineNSRange.upperBound - 1)
+                }
+            }
+            return lineNSRange.location..<lineNSRange.upperBound
+        } else {
+            return startPos <= endPos ? startPos..<endPos : endPos..<startPos
+        }
+    }
+
     private func execute(
         op: EditorOperator, motion: EditorMotion, count: Int, editor: EditorViewModel
     ) {
         print("Executing: \(op) on \(motion) for \(count) time(s)")
         editor.setLastAction(.standard(op: op, motion: motion, count: count))
 
-        let startPos = editor.cursorPosition
-
-        executeMotion(motion, count: count, editor: editor)
-
-        let endPos = editor.cursorPosition
-        let range = startPos <= endPos ? startPos..<endPos : endPos..<startPos
+        let range = getRange(op: op, motion: motion, count: count, editor: editor)
 
         switch op {
         case .delete: editor.delete(range: range)

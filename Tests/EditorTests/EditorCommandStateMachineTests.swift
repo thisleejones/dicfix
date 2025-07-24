@@ -121,6 +121,11 @@ class MockEditorViewModel: EditorViewModel {
         log.append("pasteBefore()")
         super.pasteBefore()
     }
+
+    override func transform(range: Range<Int>, to type: TransformationType) {
+        log.append("transform(range: \(range), to: .\(type))")
+        super.transform(range: range, to: type)
+    }
 }
 
 // MARK: - State Machine Tests
@@ -355,5 +360,75 @@ extension EditorCommandStateMachineTests {
         let pasteLog = editor.log.filter { $0 == "paste()" }
         XCTAssertEqual(pasteLog.count, 3, "Paste should have been called 3 times.")
         XCTAssertEqual(editor.text, "line one\nline one\nline one\nline one\nline two")
+    }
+}
+
+// MARK: - Transformation (g~, gu, gU) Tests
+extension EditorCommandStateMachineTests {
+    // g~ (swap case)
+    func testSwapCaseWord() {
+        editor.text = "one tWo thRee"
+        editor.cursorPosition = 4  // on 't' of 'tWo'
+        stateMachine.handleToken(.prefix("g"), editor: editor)
+        stateMachine.handleToken(.swapCase, editor: editor)
+        stateMachine.handleToken(.wordForward, editor: editor)
+        XCTAssertTrue(editor.log.contains("transform(range: 4..<8, to: .swapCase)"), "Log was: \(editor.log)")
+    }
+
+    func testSwapCaseLine() {
+        editor.text = "one tWo thRee\nFOUR five six"
+        editor.cursorPosition = 0
+        stateMachine.handleToken(.prefix("g"), editor: editor)
+        stateMachine.handleToken(.swapCase, editor: editor)
+        stateMachine.handleToken(.swapCase, editor: editor)  // g~~
+        XCTAssertTrue(editor.log.contains("transform(range: 0..<13, to: .swapCase)"), "Log was: \(editor.log)")
+    }
+
+    // gu (lowercase)
+    func testLowercaseWord() {
+        editor.text = "one tWo thRee"
+        editor.cursorPosition = 4  // on 't' of 'tWo'
+        stateMachine.handleToken(.prefix("g"), editor: editor)
+        stateMachine.handleToken(.lowercase, editor: editor)
+        stateMachine.handleToken(.wordForward, editor: editor)
+        XCTAssertTrue(editor.log.contains("transform(range: 4..<8, to: .lowercase)"), "Log was: \(editor.log)")
+    }
+
+    func testLowercaseLine() {
+        editor.text = "one tWo thRee\nFOUR five six"
+        editor.cursorPosition = 14  // on 'F' of 'FOUR'
+        stateMachine.handleToken(.prefix("g"), editor: editor)
+        stateMachine.handleToken(.lowercase, editor: editor)
+        stateMachine.handleToken(.lowercase, editor: editor)  // guu
+        XCTAssertTrue(editor.log.contains("transform(range: 14..<27, to: .lowercase)"), "Log was: \(editor.log)")
+    }
+
+    // gU (uppercase)
+    func testUppercaseWord() {
+        editor.text = "one tWo thRee"
+        editor.cursorPosition = 0
+        stateMachine.handleToken(.prefix("g"), editor: editor)
+        stateMachine.handleToken(.uppercase, editor: editor)
+        stateMachine.handleToken(.wordForward, editor: editor)
+        XCTAssertTrue(editor.log.contains("transform(range: 0..<4, to: .uppercase)"), "Log was: \(editor.log)")
+    }
+
+    func testUppercaseLine() {
+        editor.text = "one tWo thRee\nFOUR five six"
+        editor.cursorPosition = 0
+        stateMachine.handleToken(.prefix("g"), editor: editor)
+        stateMachine.handleToken(.uppercase, editor: editor)
+        stateMachine.handleToken(.uppercase, editor: editor)  // gUU
+        XCTAssertTrue(editor.log.contains("transform(range: 0..<13, to: .uppercase)"), "Log was: \(editor.log)")
+    }
+
+    func testCountedUppercaseWord() {
+        editor.text = "one two three"
+        editor.cursorPosition = 0
+        stateMachine.handleToken(.digit(2), editor: editor)
+        stateMachine.handleToken(.prefix("g"), editor: editor)
+        stateMachine.handleToken(.uppercase, editor: editor)
+        stateMachine.handleToken(.wordForward, editor: editor)  // 2gUw
+        XCTAssertTrue(editor.log.contains("transform(range: 0..<8, to: .uppercase)"), "Log was: \(editor.log)")
     }
 }
