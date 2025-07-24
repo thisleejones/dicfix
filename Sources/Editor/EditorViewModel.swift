@@ -94,7 +94,7 @@ open class EditorViewModel: ObservableObject {
     public func handleToken(_ token: EditorCommandToken) {
         commandSM.handleToken(token, editor: self)
     }
-    
+
     public func executeOperator(_ op: EditorOperator, range: Range<Int>) {
         switch op {
         case .delete: delete(range: range)
@@ -109,7 +109,7 @@ open class EditorViewModel: ObservableObject {
     //==================================================
     // MARK: - Cursor & Text Editing Helpers
     //==================================================
-    
+
     public func clearSelection() {
         selection = nil
     }
@@ -126,12 +126,14 @@ open class EditorViewModel: ObservableObject {
             }
         } else if let visualLineMode = mode as? VisualLineModeState {
             let textAsNSString = text as NSString
-            let anchorRange = textAsNSString.lineRange(for: NSRange(location: visualLineMode.anchor, length: 0))
-            let cursorLineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
-            
+            let anchorRange = textAsNSString.lineRange(
+                for: NSRange(location: visualLineMode.anchor, length: 0))
+            let cursorLineRange = textAsNSString.lineRange(
+                for: NSRange(location: cursorPosition, length: 0))
+
             let start = min(anchorRange.location, cursorLineRange.location)
             let end = max(anchorRange.upperBound, cursorLineRange.upperBound)
-            
+
             selection = start..<end
         }
     }
@@ -167,39 +169,53 @@ open class EditorViewModel: ObservableObject {
 
     public func moveCursorUp() {
         let textAsNSString = text as NSString
-        let currentLineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
+        let currentLineRange = textAsNSString.lineRange(
+            for: NSRange(location: cursorPosition, length: 0))
 
         // Can't move up from the first line
         guard currentLineRange.location > 0 else { return }
 
-        let previousLineRange = textAsNSString.lineRange(for: NSRange(location: currentLineRange.location - 1, length: 0))
+        let previousLineRange = textAsNSString.lineRange(
+            for: NSRange(location: currentLineRange.location - 1, length: 0))
         let column = desiredColumn ?? (cursorPosition - currentLineRange.location)
         if desiredColumn == nil {
             desiredColumn = column
         }
 
-        let lineContentLength = previousLineRange.length > 0 && textAsNSString.character(at: previousLineRange.upperBound - 1) == 10 ? previousLineRange.length - 1 : previousLineRange.length
-        let targetColumn = min(column, max(0, lineContentLength > 0 ? lineContentLength - 1 : lineContentLength))
-        
+        let lineContentLength =
+            previousLineRange.length > 0
+                && textAsNSString.character(at: previousLineRange.upperBound - 1) == 10
+            ? previousLineRange.length - 1 : previousLineRange.length
+        let targetColumn = min(
+            column, max(0, lineContentLength > 0 ? lineContentLength - 1 : lineContentLength))
+
         cursorPosition = previousLineRange.location + targetColumn
     }
 
     public func moveCursorDown() {
         let textAsNSString = text as NSString
-        let currentLineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
+        let currentLineRange = textAsNSString.lineRange(
+            for: NSRange(location: cursorPosition, length: 0))
 
         // Can't move down from the last line
         guard currentLineRange.upperBound < textAsNSString.length else { return }
 
-        let nextLineRange = textAsNSString.lineRange(for: NSRange(location: currentLineRange.upperBound, length: 0))
+        let nextLineRange = textAsNSString.lineRange(
+            for: NSRange(location: currentLineRange.upperBound, length: 0))
         let column = desiredColumn ?? (cursorPosition - currentLineRange.location)
         if desiredColumn == nil {
             desiredColumn = column
         }
 
-        let lineContentLength = nextLineRange.length > 0 && textAsNSString.character(at: nextLineRange.upperBound - 1) == 10 ? nextLineRange.length - 1 : nextLineRange.length
-        let targetColumn = min(column, max(0, lineContentLength > 0 ? lineContentLength - 1 : lineContentLength))
-        print("column: \(column), desiredColumn: \(String(describing: desiredColumn)), lineContentLength: \(lineContentLength), targetColumn: \(targetColumn)")
+        let lineContentLength =
+            nextLineRange.length > 0
+                && textAsNSString.character(at: nextLineRange.upperBound - 1) == 10
+            ? nextLineRange.length - 1 : nextLineRange.length
+        let targetColumn = min(
+            column, max(0, lineContentLength > 0 ? lineContentLength - 1 : lineContentLength))
+        print(
+            "column: \(column), desiredColumn: \(String(describing: desiredColumn)), lineContentLength: \(lineContentLength), targetColumn: \(targetColumn)"
+        )
 
         cursorPosition = nextLineRange.location + targetColumn
     }
@@ -219,7 +235,7 @@ open class EditorViewModel: ObservableObject {
     public func moveCursorToScreenLineStartNonBlank() {
         // TODO: Implement proper screen line (visual line) navigation.
         // For now, fallback to logical line navigation.
-        moveCursorToBeginningOfLine() // Simplified
+        moveCursorToBeginningOfLine()  // Simplified
     }
 
     public func moveCursorToScreenLineEnd() {
@@ -271,9 +287,13 @@ open class EditorViewModel: ObservableObject {
         if isWORD {
             // WORD = run of non-whitespace
             if scanner.currentType != .whitespace {
-                while scanner.canAdvance() && scanner.currentType != .whitespace { scanner.advance() }
+                while scanner.canAdvance() && scanner.currentType != .whitespace {
+                    scanner.advance()
+                }
             } else {
-                while scanner.canAdvance() && scanner.currentType == .whitespace { scanner.advance() }
+                while scanner.canAdvance() && scanner.currentType == .whitespace {
+                    scanner.advance()
+                }
             }
             while scanner.canAdvance() && scanner.currentType == .whitespace { scanner.advance() }
             cursorPosition = scanner.index
@@ -390,12 +410,11 @@ open class EditorViewModel: ObservableObject {
         // 'gg' also results in a call to goToLine(1).
         if line <= 1 {
             moveCursorToBeginningOfFile()
-        } 
+        }
         // A count of Int.max signifies going to the last line.
         else if line == Int.max {
             moveCursorToEndOfFile()
-        }
-        else {
+        } else {
             // This is a placeholder for real line-based navigation.
             // For now, any other line number also goes to the end.
             // TODO: Implement mapping a line number to a cursor index.
@@ -407,7 +426,7 @@ open class EditorViewModel: ObservableObject {
     public func selectLine() {
         let textAsNSString = text as NSString
         let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
-        
+
         // Adjust the cursor to the end of the line selection, including the newline character.
         cursorPosition = lineRange.upperBound
     }
@@ -444,10 +463,12 @@ open class EditorViewModel: ObservableObject {
         let textAsNSString = text as NSString
         let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
         let endOfLine = lineRange.location + lineRange.length
-        
+
         // If the line ends with a newline, we want to preserve it for 'D'
-        let rangeEnd = (endOfLine > lineRange.location && textAsNSString.character(at: endOfLine - 1) == 10) ? endOfLine - 1 : endOfLine
-        
+        let rangeEnd =
+            (endOfLine > lineRange.location && textAsNSString.character(at: endOfLine - 1) == 10)
+            ? endOfLine - 1 : endOfLine
+
         let range = cursorPosition..<rangeEnd
         delete(range: range)
     }
@@ -456,8 +477,10 @@ open class EditorViewModel: ObservableObject {
         let textAsNSString = text as NSString
         let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
         let endOfLine = lineRange.location + lineRange.length
-        let rangeEnd = (endOfLine > lineRange.location && textAsNSString.character(at: endOfLine - 1) == 10) ? endOfLine - 1 : endOfLine
-        
+        let rangeEnd =
+            (endOfLine > lineRange.location && textAsNSString.character(at: endOfLine - 1) == 10)
+            ? endOfLine - 1 : endOfLine
+
         let range = cursorPosition..<rangeEnd
         yank(range: range)
     }
@@ -467,11 +490,11 @@ open class EditorViewModel: ObservableObject {
         guard range.lowerBound >= 0,
             range.upperBound <= text.count,
             range.lowerBound < range.upperBound
-        else { 
+        else {
             print("Deletion aborted: invalid range.")
-            return 
+            return
         }
-        
+
         // Yank the text before deleting it
         let from = text.index(text.startIndex, offsetBy: range.lowerBound)
         let to = text.index(text.startIndex, offsetBy: range.upperBound)
@@ -489,8 +512,8 @@ open class EditorViewModel: ObservableObject {
 
     public func yank(range: Range<Int>) {
         guard range.lowerBound >= 0,
-              range.upperBound <= text.count,
-              range.lowerBound < range.upperBound
+            range.upperBound <= text.count,
+            range.lowerBound < range.upperBound
         else {
             print("Yank aborted: invalid range.")
             return
@@ -499,28 +522,30 @@ open class EditorViewModel: ObservableObject {
         let to = text.index(text.startIndex, offsetBy: range.upperBound)
         let yankedText = String(text[from..<to])
         setRegister(to: yankedText)
-        
+
         // Move cursor to the start of the yanked text
         cursorPosition = range.lowerBound
     }
 
     public func paste() {
         guard !register.isEmpty else { return }
-        
+
         // If the register contains a full line (ends with newline), paste it on the line below.
         if register.last == "\n" {
             let textAsNSString = text as NSString
-            let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
+            let lineRange = textAsNSString.lineRange(
+                for: NSRange(location: cursorPosition, length: 0))
             let insertPosition = lineRange.upperBound
             let index = text.index(text.startIndex, offsetBy: insertPosition)
-            
+
             // If we are pasting after a line that doesn't have a newline (i.e., the last line of the file),
             // we must first add a newline to place the pasted content on the line below.
-            let needsLeadingNewline = insertPosition > 0 && textAsNSString.character(at: insertPosition - 1) != 10
+            let needsLeadingNewline =
+                insertPosition > 0 && textAsNSString.character(at: insertPosition - 1) != 10
             let contentToInsert = needsLeadingNewline ? "\n" + register : register
-            
+
             text.insert(contentsOf: contentToInsert, at: index)
-            
+
             // The cursor should move to the beginning of the *actual* pasted content.
             // If we prepended a newline, this is one character after the insertion point.
             cursorPosition = needsLeadingNewline ? insertPosition + 1 : insertPosition
@@ -534,7 +559,7 @@ open class EditorViewModel: ObservableObject {
             }
             let index = text.index(text.startIndex, offsetBy: insertPosition)
             text.insert(contentsOf: register, at: index)
-            cursorPosition = insertPosition + register.count - 1 // Move cursor to end of pasted text
+            cursorPosition = insertPosition + register.count - 1  // Move cursor to end of pasted text
         }
     }
 
@@ -544,16 +569,17 @@ open class EditorViewModel: ObservableObject {
         // If the register contains a full line, paste it on the line above.
         if register.last == "\n" {
             let textAsNSString = text as NSString
-            let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
+            let lineRange = textAsNSString.lineRange(
+                for: NSRange(location: cursorPosition, length: 0))
             let insertPosition = lineRange.location
             let index = text.index(text.startIndex, offsetBy: insertPosition)
             text.insert(contentsOf: register, at: index)
-            cursorPosition = insertPosition // Move cursor to beginning of pasted line
+            cursorPosition = insertPosition  // Move cursor to beginning of pasted line
         } else {
             // Otherwise, paste before the cursor.
             let index = text.index(text.startIndex, offsetBy: cursorPosition)
             text.insert(contentsOf: register, at: index)
-            cursorPosition = cursorPosition + register.count - 1 // Move cursor to end of pasted text
+            cursorPosition = cursorPosition + register.count - 1  // Move cursor to end of pasted text
         }
     }
 
@@ -587,8 +613,8 @@ open class EditorViewModel: ObservableObject {
 
     public func transform(range: Range<Int>, to type: TransformationType) {
         guard range.lowerBound >= 0,
-              range.upperBound <= text.count,
-              range.lowerBound < range.upperBound
+            range.upperBound <= text.count,
+            range.lowerBound < range.upperBound
         else {
             print("Transformation aborted: invalid range.")
             return

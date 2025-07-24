@@ -96,6 +96,10 @@ public struct EditorTextField: NSViewRepresentable {
             }
         }
 
+        // Ensure the cursor is always visible after an update
+        let cursorRange = NSRange(location: cursorPosition, length: 0)
+        textView.scrollRangeToVisible(cursorRange)
+
         textView.insertionPointColor = viewModel.mode.insertionPointColor(
             settings: settings)
     }

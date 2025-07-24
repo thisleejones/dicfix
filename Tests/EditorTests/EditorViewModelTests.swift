@@ -140,6 +140,29 @@ class EditorViewModelTests: XCTestCase {
         editor.moveCursorDown()
         XCTAssertEqual(editor.cursorPosition, 27, "Cursor should return to the desired column") // "n" of "longer"
     }
+
+    func testColumnPreservationFromLastCharacterOfLine() {
+        editor.text = "1234567890\n" + // Line 1: len 11, content 10. Last char '0' is at index 9.
+                      "123\n" +        // Line 2: len 4, content 3. Last char '3' is at index 14 (11+3).
+                      "12345"          // Line 3: len 5, content 5. Last char '5' is at index 20 (15+5).
+
+        // 1. Start on the last character of the first line.
+        editor.cursorPosition = 9 // on '0'
+        
+        // 2. Move down to the second line, which is shorter.
+        editor.moveCursorDown()
+        
+        // The desired column is 9. The second line has content length 3.
+        // The cursor should land on the last character '3', at index 11 + 2 = 13.
+        XCTAssertEqual(editor.cursorPosition, 13, "Cursor should be on the last character of the shorter line.")
+        
+        // 3. Move down to the third line. It's longer than the second, but shorter than the desired column.
+        editor.moveCursorDown()
+        
+        // The desired column is still 9. The third line has content length 5.
+        // The cursor should land on the last character '5', at index 15 + 4 = 19.
+        XCTAssertEqual(editor.cursorPosition, 19, "Cursor should be on the last character of the shorter line.")
+    }
     
     // MARK: - Operator+Motion Tests
     
