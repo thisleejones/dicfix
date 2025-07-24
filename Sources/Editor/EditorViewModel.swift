@@ -249,9 +249,29 @@ open class EditorViewModel: ObservableObject {
     }
 
     public func moveCursorToScreenLineStartNonBlank() {
-        // TODO: Implement proper screen line (visual line) navigation.
-        // For now, fallback to logical line navigation.
-        moveCursorToBeginningOfLine()  // Simplified
+        let textAsNSString = text as NSString
+        let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
+
+        var searchPosition = lineRange.location
+        while searchPosition < lineRange.upperBound {
+            // Using a simple character check for whitespace, which is more direct.
+            let char = Character(UnicodeScalar(textAsNSString.character(at: searchPosition))!)
+            if !char.isWhitespace || char.isNewline {
+                // Found the first non-whitespace character or the newline terminator.
+                // The newline check handles empty lines correctly.
+                if char.isNewline {
+                    cursorPosition = lineRange.location
+                } else {
+                    cursorPosition = searchPosition
+                }
+                return
+            }
+            searchPosition += 1
+        }
+        
+        // If the loop completes, the line is empty or all whitespace.
+        // Move to the beginning of the line.
+        cursorPosition = lineRange.location
     }
 
     public func moveCursorToScreenLineEnd() {

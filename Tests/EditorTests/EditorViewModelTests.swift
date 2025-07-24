@@ -98,6 +98,46 @@ class EditorViewModelTests: XCTestCase {
         XCTAssertEqual(editor.cursorPosition, 0, "Failed to move to beginning of first line")
     }
 
+    func testMoveCursorToScreenLineStartNonBlank() {
+        // Text with leading spaces and tabs
+        editor.text = "  line 1\n\t  line 2\nline 3"
+        // Indices:
+        // "  line 1" -> 0..7
+        // \n -> 8
+        // "\t  line 2" -> 9..17
+        // \n -> 18
+        // "line 3" -> 19..24
+
+        // Test 1: Start in middle of a line with leading spaces
+        editor.cursorPosition = 4 // on 'n' of 'line 1'
+        editor.moveCursorToScreenLineStartNonBlank()
+        XCTAssertEqual(editor.cursorPosition, 2, "Failed on line with leading spaces")
+
+        // Test 2: Start at the end of a line with leading tab and spaces
+        editor.cursorPosition = 17 // end of line 2
+        editor.moveCursorToScreenLineStartNonBlank()
+        // Should move to 'l' of "line 2". Index is 9 (start) + 1 (tab) + 2 (spaces) = 12
+        XCTAssertEqual(editor.cursorPosition, 12, "Failed on line with leading tab and spaces")
+
+        // Test 3: Start on a line with no leading whitespace
+        editor.cursorPosition = 22 // on 'e' of 'line 3'
+        editor.moveCursorToScreenLineStartNonBlank()
+        XCTAssertEqual(editor.cursorPosition, 19, "Failed on line with no leading whitespace")
+        
+        // Test 4: On a line that is all whitespace
+        editor.text = "line 1\n    \nline 3"
+        // Indices:
+        // "line 1" -> 0..5
+        // \n -> 6
+        // "    " -> 7..10
+        // \n -> 11
+        // "line 3" -> 12..17
+        editor.cursorPosition = 9 // in the middle of the whitespace line
+        editor.moveCursorToScreenLineStartNonBlank()
+        // Should move to the beginning of that line
+        XCTAssertEqual(editor.cursorPosition, 7, "Failed on a line with only whitespace")
+    }
+
     // MARK: - Editing Tests
 
     func testOpenLineBelow() {
