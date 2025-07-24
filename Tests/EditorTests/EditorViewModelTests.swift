@@ -277,4 +277,25 @@ class EditorViewModelTests: XCTestCase {
         XCTAssertEqual(editor.register, "one ")
         XCTAssertEqual(editor.cursorPosition, 0) // cursor at start of yank
     }
+
+    func testDeleteBackwardWordOverBlankLine() {
+        editor.text = "abc\n\n  d"
+        // Start cursor at 'd'
+        editor.cursorPosition = 7
+        
+        // Get the range for the 'b' motion
+        let startPosition = editor.cursorPosition
+        editor.moveCursorBackwardByWord()
+        let endPosition = editor.cursorPosition
+        
+        // The motion should land at the start of the blank line (index 4)
+        XCTAssertEqual(endPosition, 4)
+        
+        // Now, perform the deletion over that range
+        editor.cursorPosition = startPosition // Reset cursor for deletion
+        editor.delete(range: endPosition..<startPosition)
+        
+        XCTAssertEqual(editor.text, "abc\nd")
+        XCTAssertEqual(editor.cursorPosition, 4)
+    }
 }

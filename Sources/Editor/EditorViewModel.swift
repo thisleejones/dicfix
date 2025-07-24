@@ -398,6 +398,22 @@ open class EditorViewModel: ObservableObject {
 
     public func moveCursorBackwardByWord(isWORD: Bool = false) {
         if cursorPosition == 0 { return }
+
+        // Special case for `{`-like behavior based on user feedback.
+        // If the text between the cursor and the last blank line is all whitespace,
+        // then `b` should behave like a paragraph motion.
+        let textBeforeCursor = String(text[..<text.index(text.startIndex, offsetBy: cursorPosition)])
+        if let blankLineRange = textBeforeCursor.range(of: "\n\n", options: .backwards) {
+            let textAfterBlankLine = text[blankLineRange.upperBound..<text.index(text.startIndex, offsetBy: cursorPosition)]
+            if textAfterBlankLine.allSatisfy({ $0.isWhitespace }) {
+                // This is the scenario the user described. Move to the start of the blank line.
+                // The position is the index of the second newline character.
+                cursorPosition = text.distance(from: text.startIndex, to: text.index(after: blankLineRange.lowerBound))
+                return
+            }
+        }
+
+        // Standard 'b' motion logic
         var scanner = TextScanner(text: text, index: cursorPosition - 1, direction: .backward)
 
         // Skip whitespace first
