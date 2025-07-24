@@ -199,6 +199,18 @@ class EditorViewModelTests: XCTestCase {
         XCTAssertEqual(editor.register, "two three")
     }
 
+    func testChangeToEndOfLine() {
+        editor.text = "one two three"
+        editor.cursorPosition = 4 // "t" of "two"
+
+        editor.changeToEndOfLine()
+
+        XCTAssertEqual(editor.text, "one ")
+        XCTAssertEqual(editor.cursorPosition, 4)
+        XCTAssertEqual(editor.register, "two three")
+        XCTAssert(editor.mode is InsertModeState, "Should be in insert mode")
+    }
+
     func testCountedDeleteCharBackward() {
         editor.text = "abcdefg"
         editor.cursorPosition = 7 // End of the string
