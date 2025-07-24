@@ -51,6 +51,53 @@ class EditorViewModelTests: XCTestCase {
         XCTAssertEqual(editor.cursorPosition, 6) // "o" of "two"
     }
 
+    // MARK: - Line Movement
+    
+    func testMoveCursorToEndOfLine() {
+        // Test on a line with a newline character
+        editor.text = "hello world\nnext line"
+        editor.cursorPosition = 2 // "l" of "hello"
+        
+        editor.moveCursorToEndOfLine()
+        
+        // Should be on the 'd' of "world", which is index 10
+        XCTAssertEqual(editor.cursorPosition, 10, "Failed on line with newline")
+        
+        // Test on the last line without a newline character
+        editor.cursorPosition = 14 // "x" of "next"
+        
+        editor.moveCursorToEndOfLine()
+        
+        // Should be on the 'e' of "line", which is index 20
+        XCTAssertEqual(editor.cursorPosition, 20, "Failed on line without newline")
+        
+        // Test on an empty line
+        editor.text = "line 1\n\nline 3"
+        editor.cursorPosition = 7 // The empty line
+        
+        editor.moveCursorToEndOfLine()
+        
+        // Should remain at the start of the empty line
+        XCTAssertEqual(editor.cursorPosition, 7, "Failed on empty line")
+    }
+
+    func testMoveCursorToBeginningOfLine() {
+        editor.text = "first line\n  second line"
+        
+        // Start in the middle of the second line
+        editor.cursorPosition = 18 // "c" of "second"
+        
+        editor.moveCursorToBeginningOfLine()
+        
+        // Should be at the start of the second line (index 11)
+        XCTAssertEqual(editor.cursorPosition, 11, "Failed to move to beginning of line")
+        
+        // Move to first line and test again
+        editor.cursorPosition = 5 // " " of "first"
+        editor.moveCursorToBeginningOfLine()
+        XCTAssertEqual(editor.cursorPosition, 0, "Failed to move to beginning of first line")
+    }
+
     // MARK: - Editing Tests
 
     func testOpenLineBelow() {

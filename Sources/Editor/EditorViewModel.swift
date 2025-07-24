@@ -139,7 +139,22 @@ open class EditorViewModel: ObservableObject {
     }
 
     public func moveCursorToEndOfLine() {
-        cursorPosition = text.count
+        let textAsNSString = text as NSString
+        let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
+
+        // Determine the end of the line's content, excluding the newline character.
+        let endOfLine = lineRange.upperBound
+        let contentEndPosition = (endOfLine > lineRange.location && textAsNSString.character(at: endOfLine - 1) == 10)
+            ? endOfLine - 1
+            : endOfLine
+
+        // If the line is not empty, move the cursor to the last character of the content.
+        if contentEndPosition > lineRange.location {
+            cursorPosition = contentEndPosition - 1
+        } else {
+            // Otherwise, the line is empty, so the cursor stays at the beginning of the line.
+            cursorPosition = lineRange.location
+        }
     }
 
     public func moveCursorToNextCharacter() {
@@ -149,8 +164,9 @@ open class EditorViewModel: ObservableObject {
     }
 
     public func moveCursorToBeginningOfLine() {
-        // TODO: find start of current visual line.
-        cursorPosition = 0
+        let textAsNSString = text as NSString
+        let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
+        cursorPosition = lineRange.location
     }
 
     public func moveCursorLeft() {
