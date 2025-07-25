@@ -155,6 +155,7 @@ public enum EditorCommandToken: Equatable {
     case switchToVisualLineMode
     case openLineBelow
     case openLineAbove
+    case splitLine
     case deleteToEndOfLine  // D
     case yankToEndOfLine  // Y
     case deleteChar  // x
@@ -239,7 +240,7 @@ public enum EditorCommandToken: Equatable {
         // Control-modified keys
         if keyEvent.mods.isControl {
             switch k {
-            case .j: return .openLineBelow
+            case .j: return .splitLine
             default: break
             }
         }
@@ -382,6 +383,8 @@ public final class EditorCommandStateMachine {
             case .openLineBelow:
                 executeAction(.standalone(token: token, count: 1), editor: editor)
             case .openLineAbove:
+                executeAction(.standalone(token: token, count: 1), editor: editor)
+            case .splitLine:
                 executeAction(.standalone(token: token, count: 1), editor: editor)
             case .repeatLastAction:
                 editor.repeatLastAction()
@@ -629,6 +632,8 @@ public final class EditorCommandStateMachine {
                     editor.openLineBelow()
                 case .openLineAbove:
                     editor.openLineAbove()
+                case .splitLine:
+                    editor.splitLine()
                 case .paste:
                     editor.paste()
                 case .pasteBefore:

@@ -4,15 +4,16 @@
 import SwiftUI
 
 // MARK: - String extension for line-based calculations
-public extension String {
-    struct Line {
+extension String {
+    public struct Line {
         public let content: String
         public let range: Range<Int>
     }
 
-    func currentLine(at cursorPosition: Int) -> Line {
+    public func currentLine(at cursorPosition: Int) -> Line {
         let textAsNSString = self as NSString
-        let lineNSRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
+        let lineNSRange = textAsNSString.lineRange(
+            for: NSRange(location: cursorPosition, length: 0))
         let lineRange = lineNSRange.location..<lineNSRange.upperBound
         let lineContent = textAsNSString.substring(with: lineNSRange)
         return Line(content: lineContent, range: lineRange)
@@ -163,7 +164,8 @@ open class EditorViewModel: ObservableObject {
 
         // Determine the end of the line's content, excluding the newline character.
         let endOfLine = lineRange.upperBound
-        let contentEndPosition = (endOfLine > lineRange.location && textAsNSString.character(at: endOfLine - 1) == 10)
+        let contentEndPosition =
+            (endOfLine > lineRange.location && textAsNSString.character(at: endOfLine - 1) == 10)
             ? endOfLine - 1
             : endOfLine
 
@@ -289,7 +291,7 @@ open class EditorViewModel: ObservableObject {
             }
             searchPosition += 1
         }
-        
+
         // If the loop completes, the line is empty or all whitespace.
         // Move to the beginning of the line.
         cursorPosition = lineRange.location
@@ -307,7 +309,8 @@ open class EditorViewModel: ObservableObject {
         let cursorRelativePos = cursorPosition - line.range.lowerBound
 
         // Define the search range on the current line
-        let searchRange: any Sequence<Int> = forward
+        let searchRange: any Sequence<Int> =
+            forward
             ? (cursorRelativePos + 1)..<lineContent.count
             : (0..<cursorRelativePos).reversed()
 
@@ -327,7 +330,8 @@ open class EditorViewModel: ObservableObject {
         }
     }
 
-    public func range(for object: TextObjectSelector, at position: Int, inner: Bool) -> Range<Int>? {
+    public func range(for object: TextObjectSelector, at position: Int, inner: Bool) -> Range<Int>?
+    {
         switch object {
         case .word, .WORD:
             return wordRange(at: position, isWORD: object == .WORD, inner: inner)
@@ -336,7 +340,8 @@ open class EditorViewModel: ObservableObject {
             return findSurrounding(char: delimiter, at: position, inner: inner)
         case .parentheses, .curlyBraces, .squareBrackets:
             guard let delimiters = object.delimiters else { return nil }
-            return findSurrounding(open: delimiters.open, close: delimiters.close, at: position, inner: inner)
+            return findSurrounding(
+                open: delimiters.open, close: delimiters.close, at: position, inner: inner)
         default:
             return nil
         }
@@ -418,7 +423,7 @@ open class EditorViewModel: ObservableObject {
             while start > 0 && textChars[start - 1].isWhitespace {
                 start -= 1
             }
-            
+
             // If no leading whitespace was found, consume trailing whitespace.
             if start == startIdx {
                 while end < textChars.count && textChars[end].isWhitespace {
@@ -429,7 +434,9 @@ open class EditorViewModel: ObservableObject {
         }
     }
 
-    private func findSurrounding(open: Character, close: Character, at position: Int, inner: Bool) -> Range<Int>? {
+    private func findSurrounding(open: Character, close: Character, at position: Int, inner: Bool)
+        -> Range<Int>?
+    {
         let textChars = Array(text)
         guard position < textChars.count else { return nil }
 
@@ -478,7 +485,7 @@ open class EditorViewModel: ObservableObject {
             while start > 0 && textChars[start - 1].isWhitespace {
                 start -= 1
             }
-            
+
             // If no leading whitespace was found, consume trailing whitespace.
             if start == openParenIndex {
                 while end < textChars.count && textChars[end].isWhitespace {
@@ -530,7 +537,7 @@ open class EditorViewModel: ObservableObject {
         if !scanner.canAdvance() { return }
 
         let charType = scanner.currentType
-        
+
         if isWORD {
             // For WORD, if we are on non-whitespace, skip it all.
             if charType != .whitespace {
@@ -556,7 +563,7 @@ open class EditorViewModel: ObservableObject {
                 scanner.advance()
             }
         }
-        
+
         cursorPosition = scanner.index
     }
 
@@ -603,13 +610,16 @@ open class EditorViewModel: ObservableObject {
         // Special case for `{`-like behavior based on user feedback.
         // If the text between the cursor and the last blank line is all whitespace,
         // then `b` should behave like a paragraph motion.
-        let textBeforeCursor = String(text[..<text.index(text.startIndex, offsetBy: cursorPosition)])
+        let textBeforeCursor = String(
+            text[..<text.index(text.startIndex, offsetBy: cursorPosition)])
         if let blankLineRange = textBeforeCursor.range(of: "\n\n", options: .backwards) {
-            let textAfterBlankLine = text[blankLineRange.upperBound..<text.index(text.startIndex, offsetBy: cursorPosition)]
+            let textAfterBlankLine = text[
+                blankLineRange.upperBound..<text.index(text.startIndex, offsetBy: cursorPosition)]
             if textAfterBlankLine.allSatisfy({ $0.isWhitespace }) {
                 // This is the scenario the user described. Move to the start of the blank line.
                 // The position is the index of the second newline character.
-                cursorPosition = text.distance(from: text.startIndex, to: text.index(after: blankLineRange.lowerBound))
+                cursorPosition = text.distance(
+                    from: text.startIndex, to: text.index(after: blankLineRange.lowerBound))
                 return
             }
         }
@@ -670,13 +680,13 @@ open class EditorViewModel: ObservableObject {
         }
 
         let lines = text.components(separatedBy: .newlines)
-        let targetLine = line - 1 // 0-indexed
+        let targetLine = line - 1  // 0-indexed
 
         if targetLine < lines.count {
             // Calculate the character index for the start of the target line.
             var charIndex = 0
             for i in 0..<targetLine {
-                charIndex += lines[i].count + 1 // +1 for the newline character
+                charIndex += lines[i].count + 1  // +1 for the newline character
             }
             self.cursorPosition = charIndex
         } else {
@@ -711,6 +721,15 @@ open class EditorViewModel: ObservableObject {
         switchToInsertMode()
     }
 
+    public func splitLine() {
+        let splitIndex = text.index(text.startIndex, offsetBy: cursorPosition)
+        let firstPart = String(text[..<splitIndex])
+        let secondPart = String(text[splitIndex...])
+        text = firstPart + "\n" + secondPart
+        cursorPosition += 1
+        switchToInsertMode()
+    }
+
     public func insertNewline() {
         let index = text.index(text.startIndex, offsetBy: cursorPosition)
         text.insert("\n", at: index)
@@ -723,10 +742,11 @@ open class EditorViewModel: ObservableObject {
 
     public func deleteToEndOfLine(count: Int = 1) {
         let firstLineInfo = text.currentLine(at: cursorPosition)
-        
+
         // Calculate the end of the range for the first line.
-        var endRange = firstLineInfo.range.upperBound - (firstLineInfo.content.hasSuffix("\n") ? 1 : 0)
-        
+        var endRange =
+            firstLineInfo.range.upperBound - (firstLineInfo.content.hasSuffix("\n") ? 1 : 0)
+
         // If count > 1, extend the range to include subsequent full lines.
         if count > 1 {
             var currentLineStart = firstLineInfo.range.upperBound
@@ -736,40 +756,43 @@ open class EditorViewModel: ObservableObject {
                 // For all but the last line, we take the whole range.
                 // For the last line, we take up to the content end.
                 if i == count - 1 {
-                    endRange = nextLineInfo.range.upperBound - (nextLineInfo.content.hasSuffix("\n") ? 1 : 0)
+                    endRange =
+                        nextLineInfo.range.upperBound
+                        - (nextLineInfo.content.hasSuffix("\n") ? 1 : 0)
                 } else {
                     endRange = nextLineInfo.range.upperBound
                 }
                 currentLineStart = nextLineInfo.range.upperBound
             }
         }
-        
+
         let rangeToDelete = cursorPosition..<endRange
         delete(range: rangeToDelete)
     }
 
     public func yankToEndOfLine(count: Int = 1) {
         var rangesToYank: [Range<Int>] = []
-        
+
         // 1. Handle the first line: from cursor to end of line content.
         let firstLineInfo = text.currentLine(at: cursorPosition)
-        let firstLineContentEnd = firstLineInfo.range.upperBound - (firstLineInfo.content.hasSuffix("\n") ? 1 : 0)
+        let firstLineContentEnd =
+            firstLineInfo.range.upperBound - (firstLineInfo.content.hasSuffix("\n") ? 1 : 0)
         if cursorPosition < firstLineContentEnd {
             rangesToYank.append(cursorPosition..<firstLineContentEnd)
         }
-        
+
         // 2. Handle subsequent full lines.
         if count > 1 {
             var currentLineStart = firstLineInfo.range.upperBound
             for _ in 1..<count {
                 if currentLineStart >= text.count { break }
-                
+
                 let nextLineInfo = text.currentLine(at: currentLineStart)
                 rangesToYank.append(nextLineInfo.range)
                 currentLineStart = nextLineInfo.range.upperBound
             }
         }
-        
+
         // 3. Join the text from the calculated ranges.
         let yankedText = rangesToYank.map { range -> String in
             let from = text.index(text.startIndex, offsetBy: range.lowerBound)
@@ -778,9 +801,9 @@ open class EditorViewModel: ObservableObject {
             let content = String(text[from..<to])
             return content.hasSuffix("\n") ? String(content.dropLast()) : content
         }.joined(separator: "\n")
-        
+
         setRegister(to: yankedText)
-        
+
         // Per Vim behavior, the cursor does not move after a Y command.
     }
 

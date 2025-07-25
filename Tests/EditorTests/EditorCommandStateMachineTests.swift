@@ -115,6 +115,16 @@ class MockEditorViewModel: EditorViewModel {
         super.requestQuit()
     }
 
+    override func openLineAbove() {
+        log.append("openLineAbove")
+        super.openLineAbove()
+    }
+
+    override func splitLine() {
+        log.append("splitLine")
+        super.splitLine()
+    }
+
     override func paste() {
         log.append("paste()")
         super.paste()
@@ -607,6 +617,18 @@ extension EditorCommandStateMachineTests {
         XCTAssertEqual(editor.text, "one \nfive six")
         XCTAssertEqual(editor.cursorPosition, 4)
         XCTAssertTrue(editor.log.contains("switchToInsertMode"), "Should switch to insert mode after C")
+    }
+
+    func testSplitLine() {
+        editor.text = "abc def geh"
+        editor.cursorPosition = 4 // on 'd'
+
+        // Ctrl-J
+        stateMachine.handleToken(.splitLine, editor: editor)
+
+        XCTAssertEqual(editor.text, "abc \ndef geh")
+        XCTAssertEqual(editor.cursorPosition, 5)
+        XCTAssertTrue(editor.log.contains("switchToInsertMode"))
     }
 }
 
