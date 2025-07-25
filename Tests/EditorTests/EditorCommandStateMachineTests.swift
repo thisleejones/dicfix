@@ -504,7 +504,7 @@ extension EditorCommandStateMachineTests {
         // diw
         stateMachine.handleToken(.delete, editor: editor)
         stateMachine.handleToken(.inner, editor: editor)  // 'i'
-        stateMachine.handleToken(.wordForward, editor: editor)  // 'w'
+        stateMachine.handleToken(.argument("w"), editor: editor)  // 'w'
 
         XCTAssertTrue(editor.log.contains("delete(range: 4..<7)"), "Log was: \(editor.log)")
         XCTAssertEqual(editor.text, "one  three")
@@ -517,7 +517,7 @@ extension EditorCommandStateMachineTests {
         // diw
         stateMachine.handleToken(.delete, editor: editor)
         stateMachine.handleToken(.inner, editor: editor)  // 'i'
-        stateMachine.handleToken(.wordForward, editor: editor)  // 'w'
+        stateMachine.handleToken(.argument("w"), editor: editor)  // 'w'
 
         XCTAssertTrue(editor.log.contains("delete(range: 3..<4)"), "Log was: \(editor.log)")
         XCTAssertEqual(editor.text, "onetwo three")
@@ -530,9 +530,35 @@ extension EditorCommandStateMachineTests {
         // diW
         stateMachine.handleToken(.delete, editor: editor)
         stateMachine.handleToken(.inner, editor: editor)  // 'i'
-        stateMachine.handleToken(.WORDForward, editor: editor)  // 'W'
+        stateMachine.handleToken(.argument("W"), editor: editor)  // 'W'
 
         XCTAssertTrue(editor.log.contains("delete(range: 0..<13)"), "Log was: \(editor.log)")
         XCTAssertEqual(editor.text, " four")
+    }
+
+    func testDeleteInnerDoubleQuotes() {
+        editor.text = "one \"two three\" four"
+        editor.cursorPosition = 7  // on 'o' of 'two'
+
+        // di"
+        stateMachine.handleToken(.delete, editor: editor)
+        stateMachine.handleToken(.inner, editor: editor)  // 'i'
+        stateMachine.handleToken(.argument("\""), editor: editor)  // '"'
+
+        XCTAssertTrue(editor.log.contains("delete(range: 5..<14)"), "Log was: \(editor.log)")
+        XCTAssertEqual(editor.text, "one \"\" four")
+    }
+
+    func testDeleteInnerParentheses() {
+        editor.text = "one (two (three)) four"
+        editor.cursorPosition = 13  // on 'h' of 'three'
+
+        // dib
+        stateMachine.handleToken(.delete, editor: editor)
+        stateMachine.handleToken(.inner, editor: editor)  // 'i'
+        stateMachine.handleToken(.argument("b"), editor: editor)  // 'b'
+
+        XCTAssertTrue(editor.log.contains("delete(range: 10..<15)"), "Log was: \(editor.log)")
+        XCTAssertEqual(editor.text, "one (two ()) four")
     }
 }

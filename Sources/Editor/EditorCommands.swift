@@ -205,6 +205,16 @@ public enum EditorCommandToken: Equatable {
     static func from(keyEvent: KeyEvent, state: EditorCommandState) -> EditorCommandToken? {
         guard let k = keyEvent.key else { return nil }
 
+        // If we are waiting for a text object selector, many keys become arguments.
+        if case .waitingForTextObjectSelector = state {
+            if let char = keyEvent.characters?.first {
+                let validSelectors = "wWbB\"'`()[]{}ps"  // p=paragraph, s=sentence
+                if validSelectors.contains(char) {
+                    return .argument(char)
+                }
+            }
+        }
+
         // If we are waiting for a suffix, some prefixes expect a character argument.
         if case .waitingForSuffix(let prefix, _) = state {
             // TODO: This is not ideal, review, it feels like this is more a state machine issue.
@@ -515,13 +525,23 @@ public final class EditorCommandStateMachine {
         editor: EditorViewModel
     ) {
         var selector: TextObjectSelector?
-        switch token {
-        case .wordForward:
-            selector = .word
-        case .WORDForward:
-            selector = .WORD
-        default:
-            break
+        if case .argument(let char) = token {
+            switch char {
+            case "w": selector = .word
+            case "W": selector = .WORD
+            case "\"": selector = .doubleQuote
+            case "'": selector = .singleQuote
+            case "`": selector = .backtick
+            case "(": selector = .parentheses
+            case ")": selector = .parentheses
+            case "b": selector = .parentheses
+            case "{": selector = .curlyBraces
+            case "}": selector = .curlyBraces
+            case "B": selector = .curlyBraces
+            case "[": selector = .squareBrackets
+            case "]": selector = .squareBrackets
+            default: break
+            }
         }
 
         if let selector = selector {

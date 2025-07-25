@@ -380,13 +380,110 @@ open class EditorViewModel: ObservableObject {
     }
 
     private func findSurrounding(char: Character, at position: Int, inner: Bool) -> Range<Int>? {
-        // TODO: Implement this
-        return nil
+        let textChars = Array(text)
+        guard position < textChars.count else { return nil }
+
+        // Find the opening delimiter
+        var startIdx = -1
+        for i in (0..<position).reversed() {
+            if textChars[i] == char {
+                startIdx = i
+                break
+            }
+        }
+
+        guard startIdx != -1 else { return nil }
+
+        // Find the closing delimiter
+        var endIdx = -1
+        for i in (position..<textChars.count) {
+            if textChars[i] == char {
+                endIdx = i
+                break
+            }
+        }
+
+        guard endIdx != -1 else { return nil }
+
+        if inner {
+            return (startIdx + 1)..<endIdx
+        } else {
+            var start = startIdx
+            var end = endIdx + 1
+
+            // Prioritize consuming leading whitespace.
+            while start > 0 && textChars[start - 1].isWhitespace {
+                start -= 1
+            }
+            
+            // If no leading whitespace was found, consume trailing whitespace.
+            if start == startIdx {
+                while end < textChars.count && textChars[end].isWhitespace {
+                    end += 1
+                }
+            }
+            return start..<end
+        }
     }
 
     private func findSurrounding(open: Character, close: Character, at position: Int, inner: Bool) -> Range<Int>? {
-        // TODO: Implement this
-        return nil
+        let textChars = Array(text)
+        guard position < textChars.count else { return nil }
+
+        var openParenIndex = -1
+        var closeParenIndex = -1
+        var balance = 0
+
+        // Find the enclosing opening paren
+        for i in (0...position).reversed() {
+            if textChars[i] == close {
+                balance += 1
+            } else if textChars[i] == open {
+                balance -= 1
+                if balance < 0 {
+                    openParenIndex = i
+                    break
+                }
+            }
+        }
+
+        guard openParenIndex != -1 else { return nil }
+
+        // Find the matching closing paren
+        balance = 0
+        for i in openParenIndex..<textChars.count {
+            if textChars[i] == open {
+                balance += 1
+            } else if textChars[i] == close {
+                balance -= 1
+                if balance == 0 {
+                    closeParenIndex = i
+                    break
+                }
+            }
+        }
+
+        guard closeParenIndex != -1 else { return nil }
+
+        if inner {
+            return (openParenIndex + 1)..<closeParenIndex
+        } else {
+            var start = openParenIndex
+            var end = closeParenIndex + 1
+
+            // Prioritize consuming leading whitespace.
+            while start > 0 && textChars[start - 1].isWhitespace {
+                start -= 1
+            }
+            
+            // If no leading whitespace was found, consume trailing whitespace.
+            if start == openParenIndex {
+                while end < textChars.count && textChars[end].isWhitespace {
+                    end += 1
+                }
+            }
+            return start..<end
+        }
     }
 
     // MARK: - Word Movement Logic
