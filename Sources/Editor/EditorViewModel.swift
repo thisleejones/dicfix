@@ -24,7 +24,7 @@ open class EditorViewModel: ObservableObject {
             updateSelection()
         }
     }
-    @Published private(set) public var mode: EditorModeState = InsertModeState()
+    @Published private(set) public var mode: EditorMode = InsertMode()
     @Published public var selection: Range<Int>?
     public var desiredColumn: Int?
 
@@ -67,26 +67,26 @@ open class EditorViewModel: ObservableObject {
         print("[EditorViewModel] Switching to InsertModeState")
         clearSelection()
         visualModeCount = 0
-        mode = InsertModeState()
+        mode = InsertMode()
     }
     public func switchToNormalMode() {
         print("[EditorViewModel] Switching to NormalModeState")
         clearSelection()
         visualModeCount = 0
-        mode = NormalModeState()
+        mode = NormalMode()
     }
 
     public func switchToVisualMode() {
         print("[EditorViewModel] Switching to VisualModeState")
         visualModeCount = 0
-        mode = VisualModeState(anchor: cursorPosition)
+        mode = VisualMode(anchor: cursorPosition)
         updateSelection()
     }
 
     public func switchToVisualLineMode() {
         print("[EditorViewModel] Switching to VisualLineModeState")
         visualModeCount = 0
-        mode = VisualLineModeState(anchor: cursorPosition)
+        mode = VisualLineMode(anchor: cursorPosition)
         updateSelection()
     }
 
@@ -131,7 +131,7 @@ open class EditorViewModel: ObservableObject {
     }
 
     private func updateSelection() {
-        if let visualMode = mode as? VisualModeState {
+        if let visualMode = mode as? VisualMode {
             let anchor = visualMode.anchor
             if cursorPosition < anchor {
                 // Selection from cursor up to and including the anchor
@@ -140,7 +140,7 @@ open class EditorViewModel: ObservableObject {
                 // Selection from anchor up to and including the cursor
                 selection = anchor..<(cursorPosition + 1)
             }
-        } else if let visualLineMode = mode as? VisualLineModeState {
+        } else if let visualLineMode = mode as? VisualLineMode {
             let textAsNSString = text as NSString
             let anchorRange = textAsNSString.lineRange(
                 for: NSRange(location: visualLineMode.anchor, length: 0))
@@ -322,6 +322,38 @@ open class EditorViewModel: ObservableObject {
             let offset = till ? (forward ? -1 : 1) : 0
             cursorPosition = line.range.lowerBound + finalIndex + offset
         }
+    }
+
+    public func innerWordRange(at position: Int) -> Range<Int>? {
+        let textChars = Array(text)
+        guard position < textChars.count else { return nil }
+
+        let isWordChar = { (c: Character) in c.isLetter || c.isNumber || c == "_" }
+        let charAtPosition = textChars[position]
+
+        let charactersToMatch: (Character) -> Bool
+        if isWordChar(charAtPosition) {
+            charactersToMatch = isWordChar
+        } else if charAtPosition.isWhitespace {
+            charactersToMatch = { $0.isWhitespace }
+        } else {
+            // Not on a word or whitespace, so no "inner word" range.
+            return nil
+        }
+
+        // Find start of the block (word or whitespace)
+        var start = position
+        while start > 0 && charactersToMatch(textChars[start - 1]) {
+            start -= 1
+        }
+
+        // Find end of the block (word or whitespace)
+        var end = position
+        while end < text.count - 1 && charactersToMatch(textChars[end + 1]) {
+            end += 1
+        }
+
+        return start..<(end + 1)
     }
 
     // MARK: - Word Movement Logic

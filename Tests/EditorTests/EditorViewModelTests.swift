@@ -178,7 +178,7 @@ class EditorViewModelTests: XCTestCase {
 
                 XCTAssertEqual(editor.text, "line one\n")
                 XCTAssertEqual(editor.cursorPosition, 8)
-                XCTAssert(editor.mode is InsertModeState)
+                XCTAssert(editor.mode is InsertMode)
         }
 
         func testOpenLineAbove() {
@@ -189,7 +189,7 @@ class EditorViewModelTests: XCTestCase {
 
                 XCTAssertEqual(editor.text, "\nline one")
                 XCTAssertEqual(editor.cursorPosition, 0)
-                XCTAssert(editor.mode is InsertModeState)
+                XCTAssert(editor.mode is InsertMode)
         }
 
         func testDeleteToEndOfLine() {
@@ -212,7 +212,7 @@ class EditorViewModelTests: XCTestCase {
                 XCTAssertEqual(editor.text, "one ")
                 XCTAssertEqual(editor.cursorPosition, 4)
                 XCTAssertEqual(editor.register, "two three")
-                XCTAssert(editor.mode is InsertModeState, "Should be in insert mode")
+                XCTAssert(editor.mode is InsertMode, "Should be in insert mode")
         }
 
         func testCountedDeleteCharBackward() {
@@ -314,7 +314,7 @@ class EditorViewModelTests: XCTestCase {
                 XCTAssertEqual(editor.text, "one three")
                 XCTAssertEqual(editor.register, "two ")
                 XCTAssertEqual(editor.cursorPosition, 4)
-                XCTAssert(editor.mode is InsertModeState, "Should be in insert mode")
+                XCTAssert(editor.mode is InsertMode, "Should be in insert mode")
         }
 
         func testYankWord() {
@@ -463,7 +463,7 @@ class EditorViewModelTests: XCTestCase {
 
                 // Enter Visual Line Mode ('V')
                 editor.switchToVisualLineMode()
-                XCTAssert(editor.mode is VisualLineModeState)
+                XCTAssert(editor.mode is VisualLineMode)
 
                 // Move down to select the second line ('j')
                 editor.moveCursorDown()
@@ -489,7 +489,7 @@ class EditorViewModelTests: XCTestCase {
                 // Cursor should be at the beginning of the remaining text
                 XCTAssertEqual(editor.cursorPosition, 0)
                 // Mode should be back to normal
-                XCTAssert(editor.mode is NormalModeState)
+                XCTAssert(editor.mode is NormalMode)
         }
 
         func testVisualLineModeYank() {
@@ -498,7 +498,7 @@ class EditorViewModelTests: XCTestCase {
 
                 // Enter Visual Line Mode ('V')
                 editor.switchToVisualLineMode()
-                XCTAssert(editor.mode is VisualLineModeState)
+                XCTAssert(editor.mode is VisualLineMode)
 
                 // Move down to select the third line ('j')
                 editor.moveCursorDown()
@@ -524,6 +524,6 @@ class EditorViewModelTests: XCTestCase {
                 // Cursor should be at the start of the selection
                 XCTAssertEqual(editor.cursorPosition, 9)
                 // Mode should be back to normal
-                XCTAssert(editor.mode is NormalModeState)
+                XCTAssert(editor.mode is NormalMode)
         }
 }

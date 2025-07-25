@@ -261,11 +261,11 @@ class EditorCommandStateMachineTests: XCTestCase {
     func testInvalidSequenceResetsState() {
         // Start with a valid operator
         stateMachine.handleToken(.delete, editor: editor)
-        // Follow with an invalid token for this state
-        stateMachine.handleToken(.switchToInsertMode, editor: editor)
+        // Follow with an invalid token for this state, e.g., 'p' for paste.
+        stateMachine.handleToken(.paste, editor: editor)
 
         // The state machine should reset, and the standalone command should execute.
-        XCTAssertEqual(editor.log, ["switchToInsertMode"])
+        XCTAssertEqual(editor.log, ["paste()"])
 
         // Now try a simple motion to ensure we are back in idle
         editor.log.removeAll()
@@ -421,7 +421,8 @@ extension EditorCommandStateMachineTests {
         stateMachine.handleToken(.prefix("g"), editor: editor)
         stateMachine.handleToken(.swapCase, editor: editor)
         stateMachine.handleToken(.wordForward, editor: editor)
-        XCTAssertTrue(editor.log.contains("transform(range: 4..<8, to: .swapCase)"), "Log was: \(editor.log)")
+        XCTAssertTrue(
+            editor.log.contains("transform(range: 4..<8, to: .swapCase)"), "Log was: \(editor.log)")
     }
 
     func testSwapCaseLine() {
@@ -430,7 +431,9 @@ extension EditorCommandStateMachineTests {
         stateMachine.handleToken(.prefix("g"), editor: editor)
         stateMachine.handleToken(.swapCase, editor: editor)
         stateMachine.handleToken(.swapCase, editor: editor)  // g~~
-        XCTAssertTrue(editor.log.contains("transform(range: 0..<13, to: .swapCase)"), "Log was: \(editor.log)")
+        XCTAssertTrue(
+            editor.log.contains("transform(range: 0..<13, to: .swapCase)"), "Log was: \(editor.log)"
+        )
     }
 
     // gu (lowercase)
@@ -440,7 +443,9 @@ extension EditorCommandStateMachineTests {
         stateMachine.handleToken(.prefix("g"), editor: editor)
         stateMachine.handleToken(.lowercase, editor: editor)
         stateMachine.handleToken(.wordForward, editor: editor)
-        XCTAssertTrue(editor.log.contains("transform(range: 4..<8, to: .lowercase)"), "Log was: \(editor.log)")
+        XCTAssertTrue(
+            editor.log.contains("transform(range: 4..<8, to: .lowercase)"), "Log was: \(editor.log)"
+        )
     }
 
     func testLowercaseLine() {
@@ -449,7 +454,9 @@ extension EditorCommandStateMachineTests {
         stateMachine.handleToken(.prefix("g"), editor: editor)
         stateMachine.handleToken(.lowercase, editor: editor)
         stateMachine.handleToken(.lowercase, editor: editor)  // guu
-        XCTAssertTrue(editor.log.contains("transform(range: 14..<27, to: .lowercase)"), "Log was: \(editor.log)")
+        XCTAssertTrue(
+            editor.log.contains("transform(range: 14..<27, to: .lowercase)"),
+            "Log was: \(editor.log)")
     }
 
     // gU (uppercase)
@@ -459,7 +466,9 @@ extension EditorCommandStateMachineTests {
         stateMachine.handleToken(.prefix("g"), editor: editor)
         stateMachine.handleToken(.uppercase, editor: editor)
         stateMachine.handleToken(.wordForward, editor: editor)
-        XCTAssertTrue(editor.log.contains("transform(range: 0..<4, to: .uppercase)"), "Log was: \(editor.log)")
+        XCTAssertTrue(
+            editor.log.contains("transform(range: 0..<4, to: .uppercase)"), "Log was: \(editor.log)"
+        )
     }
 
     func testUppercaseLine() {
@@ -468,7 +477,9 @@ extension EditorCommandStateMachineTests {
         stateMachine.handleToken(.prefix("g"), editor: editor)
         stateMachine.handleToken(.uppercase, editor: editor)
         stateMachine.handleToken(.uppercase, editor: editor)  // gUU
-        XCTAssertTrue(editor.log.contains("transform(range: 0..<13, to: .uppercase)"), "Log was: \(editor.log)")
+        XCTAssertTrue(
+            editor.log.contains("transform(range: 0..<13, to: .uppercase)"),
+            "Log was: \(editor.log)")
     }
 
     func testCountedUppercaseWord() {
@@ -478,6 +489,37 @@ extension EditorCommandStateMachineTests {
         stateMachine.handleToken(.prefix("g"), editor: editor)
         stateMachine.handleToken(.uppercase, editor: editor)
         stateMachine.handleToken(.wordForward, editor: editor)  // 2gUw
-        XCTAssertTrue(editor.log.contains("transform(range: 0..<8, to: .uppercase)"), "Log was: \(editor.log)")
+        XCTAssertTrue(
+            editor.log.contains("transform(range: 0..<8, to: .uppercase)"), "Log was: \(editor.log)"
+        )
+    }
+}
+
+// MARK: - Text Object Tests
+extension EditorCommandStateMachineTests {
+    func testDeleteInnerWord() {
+        editor.text = "one two three"
+        editor.cursorPosition = 5  // on 'w' of 'two'
+
+        // diw
+        stateMachine.handleToken(.delete, editor: editor)
+        stateMachine.handleToken(.inner, editor: editor)  // 'i'
+        stateMachine.handleToken(.wordForward, editor: editor)  // 'w'
+
+        XCTAssertTrue(editor.log.contains("delete(range: 4..<7)"), "Log was: \(editor.log)")
+        XCTAssertEqual(editor.text, "one  three")
+    }
+
+    func testDeleteInnerWordOnWhitespace() {
+        editor.text = "one two three"
+        editor.cursorPosition = 3  // on space after "one"
+
+        // diw
+        stateMachine.handleToken(.delete, editor: editor)
+        stateMachine.handleToken(.inner, editor: editor)  // 'i'
+        stateMachine.handleToken(.wordForward, editor: editor)  // 'w'
+
+        XCTAssertTrue(editor.log.contains("delete(range: 3..<4)"), "Log was: \(editor.log)")
+        XCTAssertEqual(editor.text, "onetwo three")
     }
 }

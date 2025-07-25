@@ -20,6 +20,26 @@ public enum EditorOperator {
     case swapCase
 }
 
+/// A prefix that specifies whether to include whitespace or surrounding characters.
+public enum TextObjectPrefix {
+    case inner  // e.g., 'iw' for "inner word"
+    case around  // e.g., 'aw' for "a word"
+}
+
+/// A selector for a region of text, like a word, sentence, or quoted string.
+public enum TextObjectSelector {
+    case word
+    case WORD
+    case paragraph
+    case sentence
+    case singleQuote
+    case doubleQuote
+    case backtick
+    case parentheses
+    case curlyBraces
+    case squareBrackets
+}
+
 /// Describes a region of text to be affected by an operator.
 public enum EditorMotion {
     case wordForward
@@ -40,6 +60,7 @@ public enum EditorMotion {
     case screenLineUp
     case screenLineStartNonBlank
     case screenLineEnd
+    case textObject(prefix: TextObjectPrefix, selector: TextObjectSelector)
 }
 
 /// The explicit state of the command state machine.
@@ -48,6 +69,7 @@ public enum EditorCommandState: CustomStringConvertible {
     case waitingForMotion(operator: EditorOperator, count: Int)
     case waitingForOperator(count: Int)
     case waitingForSuffix(prefix: EditorCommandToken, count: Int)
+    case waitingForTextObjectSelector(operator: EditorOperator, count: Int, prefix: TextObjectPrefix)
 
     public var description: String {
         switch self {
@@ -59,6 +81,8 @@ public enum EditorCommandState: CustomStringConvertible {
             return "waitingForOperator(count: \(count))"
         case .waitingForSuffix(let prefix, let count):
             return "waitingForSuffix(prefix: \(prefix), count: \(count))"
+        case .waitingForTextObjectSelector(let op, let count, let prefix):
+            return "waitingForTextObjectSelector(operator: \(op), count: \(count), prefix: \(prefix))"
         }
     }
 }
@@ -94,6 +118,10 @@ public enum EditorCommandToken: Equatable {
     case goToStartOfLine  // 0
     case screenLineStartNonBlank  // ^
     case screenLineEnd  // $
+
+    // Text Object Prefixes
+    case inner  // i
+    case around  // a
 
     // Standalone commands
     case switchToInsertMode
@@ -157,10 +185,13 @@ public enum EditorCommandToken: Equatable {
     static func from(keyEvent: KeyEvent, state: EditorCommandState) -> EditorCommandToken? {
         guard let k = keyEvent.key else { return nil }
 
-        // If we are waiting for a suffix, any character is an argument.
-        if case .waitingForSuffix = state {
-            if let char = keyEvent.characters?.first {
-                return .argument(char)
+        // If we are waiting for a suffix, some prefixes expect a character argument.
+        if case .waitingForSuffix(let prefix, _) = state {
+            // TODO: This is not ideal, review, it feels like this is more a state machine issue.
+            if case .prefix(let pchar) = prefix, "fFtT".contains(pchar) {
+                if let char = keyEvent.characters?.first {
+                    return .argument(char)
+                }
             }
         }
 
@@ -218,9 +249,18 @@ public enum EditorCommandToken: Equatable {
         case .f: return keyEvent.mods.isOnlyShift ? .prefix("F") : .prefix("f")
         case .t: return keyEvent.mods.isOnlyShift ? .prefix("T") : .prefix("t")
         case .g: return .prefix("g")
-        // Standalone Commands
-        case .i: return .switchToInsertMode
-        case .a: return .switchToInsertModeAndMove
+
+        // Standalone Commands / Text Object Prefixes
+        case .i:
+            if case .waitingForMotion = state {
+                return .inner
+            }
+            return .switchToInsertMode
+        case .a:
+            if case .waitingForMotion = state {
+                return .around
+            }
+            return .switchToInsertModeAndMove
         case .o: return .openLineBelow
         case .v: return .switchToVisualMode
         case .x: return .deleteChar
@@ -256,6 +296,9 @@ public final class EditorCommandStateMachine {
             handleTokenInWaitingForMotionState(token, op: op, count: count, editor: editor)
         case .waitingForSuffix(let prefix, let count):
             handleTokenInWaitingForSuffixState(token, prefix: prefix, count: count, editor: editor)
+        case .waitingForTextObjectSelector(let op, let count, let prefix):
+            handleTokenInWaitingForTextObjectSelectorState(
+                token, op: op, count: count, prefix: prefix, editor: editor)
         }
         print("           -> new state: \(state)")
     }
@@ -271,7 +314,7 @@ public final class EditorCommandStateMachine {
                 state = .waitingForOperator(count: digit)
             }
         } else if let motion = token.toMotion {
-            if motion == .goToEndOfFile {
+            if case .goToEndOfFile = motion {
                 // 'G' with no count goes to the last line.
                 editor.goToLine(Int.max)
             } else {
@@ -436,6 +479,10 @@ public final class EditorCommandStateMachine {
         } else if let secondOpToken = token.toOperator, secondOpToken == op {
             // Handle doubled operators like 'dd', 'yy' as line-wise operations.
             execute(op: op, motion: .line, count: count, editor: editor)
+        } else if token == .inner {  // 'i'
+            state = .waitingForTextObjectSelector(operator: op, count: count, prefix: .inner)
+        } else if token == .around {  // 'a'
+            state = .waitingForTextObjectSelector(operator: op, count: count, prefix: .around)
         } else {
             // Invalid token in this state. Reset and re-process.
             state = .idle
@@ -443,9 +490,31 @@ public final class EditorCommandStateMachine {
         }
     }
 
+    private func handleTokenInWaitingForTextObjectSelectorState(
+        _ token: EditorCommandToken, op: EditorOperator, count: Int, prefix: TextObjectPrefix,
+        editor: EditorViewModel
+    ) {
+        var selector: TextObjectSelector?
+        switch token {
+        case .wordForward:
+            selector = .word
+        default:
+            break
+        }
+
+        if let selector = selector {
+            let motion = EditorMotion.textObject(prefix: prefix, selector: selector)
+            execute(op: op, motion: motion, count: count, editor: editor)
+        } else {
+            // Invalid sequence. Reset.
+            state = .idle
+            handleToken(token, editor: editor)
+        }
+    }
+
     public func executeMotion(_ motion: EditorMotion, count: Int, editor: EditorViewModel) {
         // Special handling for motions that use count as a line number.
-        if motion == .goToEndOfFile {
+        if case .goToEndOfFile = motion {
             editor.goToLine(count)
             return
         }
@@ -469,7 +538,10 @@ public final class EditorCommandStateMachine {
             case .screenLineStartNonBlank: editor.moveCursorToScreenLineStartNonBlank()
             case .screenLineEnd: editor.moveCursorToScreenLineEnd()
             case .line: editor.selectLine()
-            case .goToEndOfFile: break  // Already handled above
+            case .goToEndOfFile: break  // Already handled above'
+            case .textObject(_, _):
+                // TODO: AI, implemenet this!
+                break
             }
         }
     }
@@ -510,10 +582,22 @@ public final class EditorCommandStateMachine {
         op: EditorOperator, motion: EditorMotion, count: Int, editor: EditorViewModel
     ) -> Range<Int> {
         let startPos = editor.cursorPosition
+
+        if case .textObject(let prefix, let selector) = motion {
+            if selector == .word {
+                if prefix == .inner {
+                    if let range = editor.innerWordRange(at: editor.cursorPosition) {
+                        return range
+                    }
+                }
+            }
+            return editor.cursorPosition..<editor.cursorPosition  // No range found
+        }
+
         executeMotion(motion, count: count, editor: editor)
         let endPos = editor.cursorPosition
 
-        if motion == .line {
+        if case .line = motion {
             let textAsNSString = editor.text as NSString
             var lineNSRange = textAsNSString.lineRange(for: NSRange(location: startPos, length: 0))
 

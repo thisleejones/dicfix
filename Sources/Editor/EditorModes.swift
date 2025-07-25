@@ -14,7 +14,7 @@ public struct EditorSettings {
 }
 
 // MARK: - Editor State Protocol
-public protocol EditorModeState {
+public protocol EditorMode {
     var name: String { get }
     func insertionPointColor(settings: EditorSettings) -> NSColor
 
@@ -23,7 +23,7 @@ public protocol EditorModeState {
 }
 
 // MARK: - Insert Mode State
-public struct InsertModeState: EditorModeState {
+public struct InsertMode: EditorMode {
     public let name = "INSERT"
 
     public init() {}
@@ -35,7 +35,7 @@ public struct InsertModeState: EditorModeState {
     public func handleEvent(_ keyEvent: KeyEvent, editor: EditorViewModel) -> Bool {
         // Escape leaves insert mode.
         if keyEvent.key == .escape {
-            print("[InsertModeState] Detected Escape. Switching to Normal mode.")
+            print("[InsertMode] Detected Escape. Switching to Normal mode.")
             editor.switchToNormalMode()
             return true  // Event handled.
         }
@@ -51,7 +51,7 @@ public struct InsertModeState: EditorModeState {
 }
 
 // MARK: - Normal Mode State
-public struct NormalModeState: EditorModeState {
+public struct NormalMode: EditorMode {
     public let name = "NORMAL"
 
     public init() {}
@@ -74,7 +74,7 @@ public struct NormalModeState: EditorModeState {
 }
 
 // MARK: - Visual Mode State
-public struct VisualModeState: EditorModeState {
+public struct VisualMode: EditorMode {
     public let name = "VISUAL"
     public let anchor: Int
 
@@ -127,7 +127,7 @@ public struct VisualModeState: EditorModeState {
 }
 
 // MARK: - Visual Line Mode State
-public struct VisualLineModeState: EditorModeState {
+public struct VisualLineMode: EditorMode {
     public let name = "VISUAL LINE"
     public let anchor: Int
 
@@ -156,11 +156,12 @@ public struct VisualLineModeState: EditorModeState {
     private func handleToken(_ token: EditorCommandToken, editor: EditorViewModel) {
         if let motion = token.toMotion {
             // In visual line mode, most motions are line-wise
-            let lineWiseMotions: [EditorMotion] = [
-                .lineUp, .lineDown, .goToEndOfFile, .goToStartOfLine,
-            ]
-            if lineWiseMotions.contains(motion) {
+            switch motion {
+            case .lineUp, .lineDown, .goToEndOfFile, .goToStartOfLine, .goToFirstLine:
                 editor.commandSM.executeMotion(motion, count: 1, editor: editor)
+            default:
+                // Other motions are ignored in visual line mode for now.
+                break
             }
         } else if let op = token.toOperator {
             if let selectionRange = editor.selection {
