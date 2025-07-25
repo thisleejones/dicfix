@@ -167,16 +167,12 @@ bindings = [
 
 ## Building from Source
 
-This project uses a `Makefile` to simplify the build process. It relies on [Tuist](https://tuist.io) to generate the Xcode project. For a cleaner test output, it is recommended to install [xcbeautify](https://github.com/tuist/xcbeautify).
+This project uses a `Makefile` to simplify the build process. It relies on [Tuist](https://tuist.io) to generate the Xcode project.
 
-1.  **Install Tuist and xcbeautify**:
-    If you don't have them, you can install them easily.
+1.  **Install Tuist**:
+    If you don't have it, you can install it easily.
     ```bash
-    # Install Tuist
     curl -Ls https://tuist.io/install.sh | bash
-
-    # Install xcbeautify (optional, for cleaner test output)
-    brew install xcbeautify
     ```
 
 2.  **Clone the repository**:
@@ -190,7 +186,7 @@ This project uses a `Makefile` to simplify the build process. It relies on [Tuis
     ```bash
     make build
     ```
-    The compiled `dicfix.app` will be in the `build/Build/Products/Debug/` directory.
+    The compiled `dicfix.app` will be in the `build/Debug/` directory.
 
 ### Other Useful Commands
 
@@ -211,9 +207,9 @@ This project uses a `Makefile` to simplify the build process. It relies on [Tuis
     ```
 
 -   **Install the app**:
-    This will copy the compiled `dicfix.app` to your `/Applications` folder.
+    This will build the Release version and copy the compiled `dicfix.app` to your `/Applications` folder.
     ```bash
-    make install CONFIGURATION=Release
+    make install
     ```
 
 -   **Clean the build directory**:

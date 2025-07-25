@@ -34,6 +34,8 @@ let project = Project(
             ],
             dependencies: [.target(name: "Editor")],
             settings: .settings(base: [
+                "MARKETING_VERSION": "0.1.0",
+                "CURRENT_PROJECT_VERSION": "1",
                 "CODE_SIGN_IDENTITY": "",
                 "CODE_SIGNING_REQUIRED": "NO",
                 "CODE_SIGNING_ALLOWED": "NO",

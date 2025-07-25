@@ -7,46 +7,36 @@ PROJECT = $(PROJECT_NAME).xcodeproj
 CONFIGURATION ?= Debug
 BUILD_DIR = build
 INSTALL_DIR ?= /Applications
-EXECUTABLE_PATH = "$(BUILD_DIR)/Build/Products/$(CONFIGURATION)/$(PROJECT_NAME).app/Contents/MacOS/$(PROJECT_NAME)"
+EXECUTABLE_PATH = "$(BUILD_DIR)/$(CONFIGURATION)/$(PROJECT_NAME).app/Contents/MacOS/$(PROJECT_NAME)"
 TESTS ?=
 
-.PHONY: all build clean run install lint test release generate
+.PHONY: all build clean run install lint test release
 
 all: build
 
-generate:
+build:
+	@mkdir -p $(BUILD_DIR)
 	@if ! command -v tuist &> /dev/null; then \
 		echo "Error: tuist is not installed. Please install it to continue."; \
 		echo "See: https://tuist.io"; \
 		exit 1; \
 	fi
-	@echo "Generating Xcode project with Tuist..."
-	@tuist generate --no-open
-
-build: generate
 	@echo "Building $(PROJECT_NAME) with $(CONFIGURATION) configuration..."
-	@if command -v xcbeautify &> /dev/null; then \
-		xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION) -derivedDataPath $(BUILD_DIR) build | xcbeautify --disable-logging; \
-	else \
-		xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION) -derivedDataPath $(BUILD_DIR) build; \
-	fi
+	@tuist build --generate --configuration $(CONFIGURATION) --build-output-path $(BUILD_DIR)
 
 clean:
 	@echo "Cleaning..."
-	@rm -rf $(BUILD_DIR)
-	@rm -rf CompilationCache.noindex
-	@rm -rf ModuleCache.noindex
-	@rm -rf SDKStatCaches.noindex
-	@rm -rf Index.noindex
-	@xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION) clean
+	@tuist clean
 
 run: build
 	@echo "Running $(PROJECT_NAME)..."
 	@OS_ACTIVITY_MODE=disable $(EXECUTABLE_PATH) $(ARGS)
 
-install: build
+install:
+	@echo "Building release version for installation..."
+	@$(MAKE) build CONFIGURATION=Release
 	@echo "Installing $(PROJECT_NAME) to $(INSTALL_DIR)..."
-	@cp -R "$(BUILD_DIR)/Build/Products/$(CONFIGURATION)/$(PROJECT_NAME).app" "$(INSTALL_DIR)/"
+	@cp -R "$(BUILD_DIR)/Release/$(PROJECT_NAME).app" "$(INSTALL_DIR)/"
 
 release:
 	@echo "Building release version of $(PROJECT_NAME)..."
@@ -56,12 +46,6 @@ lint:
 	@echo "Linting..."
 	@swiftlint
 
-test: generate
+test:
 	@echo "Testing..."
-	@if command -v xcbeautify &> /dev/null; then \
-		xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION) \
-		$(foreach T,$(TESTS),-only-testing:$(T)) test | xcbeautify --disable-logging; \
-	else \
-		xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION) \
-		$(foreach T,$(TESTS),-only-testing:$(T)) test; \
-	fi
+	@tuist test --clean --configuration $(CONFIGURATION)
