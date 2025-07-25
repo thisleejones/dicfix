@@ -540,7 +540,7 @@ extension EditorCommandStateMachineTests {
         editor.text = "one \"two three\" four"
         editor.cursorPosition = 7  // on 'o' of 'two'
 
-        // di"
+        // di\"
         stateMachine.handleToken(.delete, editor: editor)
         stateMachine.handleToken(.inner, editor: editor)  // 'i'
         stateMachine.handleToken(.argument("\""), editor: editor)  // '"'
@@ -560,5 +560,80 @@ extension EditorCommandStateMachineTests {
 
         XCTAssertTrue(editor.log.contains("delete(range: 10..<15)"), "Log was: \(editor.log)")
         XCTAssertEqual(editor.text, "one (two ()) four")
+    }
+}
+
+// MARK: - Operator + Find/To Tests
+extension EditorCommandStateMachineTests {
+    func testDeleteTillChar() {
+        editor.text = "one two three"
+        editor.cursorPosition = 0 // on 'o'
+
+        // dt' '
+        stateMachine.handleToken(.delete, editor: editor)
+        stateMachine.handleToken(.prefix("t"), editor: editor)
+        stateMachine.handleToken(.argument(" "), editor: editor)
+
+        XCTAssertTrue(editor.log.contains("delete(range: 0..<3)"), "Log was: \(editor.log)")
+        XCTAssertEqual(editor.text, " two three")
+        XCTAssertEqual(editor.cursorPosition, 0)
+    }
+
+    func testDeleteFindChar() {
+        editor.text = "one two three"
+        editor.cursorPosition = 0 // on 'o'
+
+        // df' '
+        stateMachine.handleToken(.delete, editor: editor)
+        stateMachine.handleToken(.prefix("f"), editor: editor)
+        stateMachine.handleToken(.argument(" "), editor: editor)
+
+        XCTAssertTrue(editor.log.contains("delete(range: 0..<4)"), "Log was: \(editor.log)")
+        XCTAssertEqual(editor.text, "two three")
+        XCTAssertEqual(editor.cursorPosition, 0)
+    }
+
+    func testYankFindChar() {
+        editor.text = "one two three"
+        editor.cursorPosition = 0 // on 'o'
+
+        // yf' '
+        stateMachine.handleToken(.yank, editor: editor)
+        stateMachine.handleToken(.prefix("f"), editor: editor)
+        stateMachine.handleToken(.argument(" "), editor: editor)
+
+        XCTAssertTrue(editor.log.contains("yank(range: 0..<4)"), "Log was: \(editor.log)")
+        XCTAssertEqual(editor.register, "one ")
+        XCTAssertEqual(editor.text, "one two three") // Yank shouldn't change text
+        XCTAssertEqual(editor.cursorPosition, 0)
+    }
+
+    func testChangeTillChar() {
+        editor.text = "one two three"
+        editor.cursorPosition = 4 // on 't' of 'two'
+
+        // ct'h'
+        stateMachine.handleToken(.change, editor: editor)
+        stateMachine.handleToken(.prefix("t"), editor: editor)
+        stateMachine.handleToken(.argument("h"), editor: editor)
+
+        XCTAssertTrue(editor.log.contains("change(range: 4..<9)"), "Log was: \(editor.log)")
+        XCTAssertEqual(editor.text, "one hree")
+        XCTAssertEqual(editor.cursorPosition, 4)
+        XCTAssertTrue(editor.log.contains("switchToInsertMode"), "Should switch to insert mode")
+    }
+    
+    func testDeleteFindCharBackward() {
+        editor.text = "one two three"
+        editor.cursorPosition = 12 // on 'e' of 'three'
+
+        // dF' '
+        stateMachine.handleToken(.delete, editor: editor)
+        stateMachine.handleToken(.prefix("F"), editor: editor)
+        stateMachine.handleToken(.argument(" "), editor: editor)
+
+        XCTAssertTrue(editor.log.contains("delete(range: 7..<13)"), "Log was: \(editor.log)")
+        XCTAssertEqual(editor.text, "one two")
+        XCTAssertEqual(editor.cursorPosition, 7)
     }
 }

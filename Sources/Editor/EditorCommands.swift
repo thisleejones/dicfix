@@ -60,6 +60,7 @@ public enum TextObjectSelector {
 
 /// Describes a region of text to be affected by an operator.
 public enum EditorMotion {
+    case findCharacter(char: Character, forward: Bool, till: Bool)
     case wordForward
     case WORDForward
     case wordBackward
@@ -86,7 +87,7 @@ public enum EditorCommandState: CustomStringConvertible {
     case idle
     case waitingForMotion(operator: EditorOperator, count: Int)
     case waitingForOperator(count: Int)
-    case waitingForSuffix(prefix: EditorCommandToken, count: Int)
+    case waitingForSuffix(operator: EditorOperator?, prefix: EditorCommandToken, count: Int)
     case waitingForTextObjectSelector(
         operator: EditorOperator, count: Int, prefix: TextObjectPrefix)
 
@@ -98,8 +99,9 @@ public enum EditorCommandState: CustomStringConvertible {
             return "waitingForMotion(operator: \(op), count: \(count))"
         case .waitingForOperator(let count):
             return "waitingForOperator(count: \(count))"
-        case .waitingForSuffix(let prefix, let count):
-            return "waitingForSuffix(prefix: \(prefix), count: \(count))"
+        case .waitingForSuffix(let op, let prefix, let count):
+            let opString = op != nil ? "operator: \(op!), " : ""
+            return "waitingForSuffix(\(opString)prefix: \(prefix), count: \(count))"
         case .waitingForTextObjectSelector(let op, let count, let prefix):
             return
                 "waitingForTextObjectSelector(operator: \(op), count: \(count), prefix: \(prefix))"
@@ -216,8 +218,7 @@ public enum EditorCommandToken: Equatable {
         }
 
         // If we are waiting for a suffix, some prefixes expect a character argument.
-        if case .waitingForSuffix(let prefix, _) = state {
-            // TODO: This is not ideal, review, it feels like this is more a state machine issue.
+        if case .waitingForSuffix(_, let prefix, _) = state {
             if case .prefix(let pchar) = prefix, "fFtT".contains(pchar) {
                 if let char = keyEvent.characters?.first {
                     return .argument(char)
@@ -324,8 +325,8 @@ public final class EditorCommandStateMachine {
             handleTokenInWaitingForOperatorState(token, count: count, editor: editor)
         case .waitingForMotion(let op, let count):
             handleTokenInWaitingForMotionState(token, op: op, count: count, editor: editor)
-        case .waitingForSuffix(let prefix, let count):
-            handleTokenInWaitingForSuffixState(token, prefix: prefix, count: count, editor: editor)
+        case .waitingForSuffix(let op, let prefix, let count):
+            handleTokenInWaitingForSuffixState(token, op: op, prefix: prefix, count: count, editor: editor)
         case .waitingForTextObjectSelector(let op, let count, let prefix):
             handleTokenInWaitingForTextObjectSelectorState(
                 token, op: op, count: count, prefix: prefix, editor: editor)
@@ -351,7 +352,7 @@ public final class EditorCommandStateMachine {
                 executeMotion(motion, count: 1, editor: editor)
             }
         } else if case .prefix = token {
-            state = .waitingForSuffix(prefix: token, count: 1)
+            state = .waitingForSuffix(operator: nil, prefix: token, count: 1)
         } else {
             // Handle standalone commands that execute immediately.
             switch token {
@@ -398,72 +399,53 @@ public final class EditorCommandStateMachine {
         }
     }
 
-    private func handleTokenInWaitingForSuffixState(
-        _ token: EditorCommandToken, prefix: EditorCommandToken, count: Int, editor: EditorViewModel
-    ) {
-        var handled = false
-        switch prefix {
-        case .prefix("f"):
-            if case .argument(let char) = token {
-                for _ in 0..<count {
-                    editor.moveCursorToCharacter(char, forward: true, till: false)
-                }
-                handled = true
-            }
-        case .prefix("F"):
-            if case .argument(let char) = token {
-                for _ in 0..<count {
-                    editor.moveCursorToCharacter(char, forward: false, till: false)
-                }
-                handled = true
-            }
-        case .prefix("t"):
-            if case .argument(let char) = token {
-                for _ in 0..<count {
-                    editor.moveCursorToCharacter(char, forward: true, till: true)
-                }
-                handled = true
-            }
-        case .prefix("T"):
-            if case .argument(let char) = token {
-                for _ in 0..<count {
-                    editor.moveCursorToCharacter(char, forward: false, till: true)
-                }
-                handled = true
-            }
-        case .prefix("g"):
-            if case .prefix("g") = prefix, token == .prefix("g") {  // gg
-                executeMotion(.goToFirstLine, count: count, editor: editor)
-                handled = true
-            } else if case .digit(0) = token {  // g0
-                executeMotion(.goToStartOfLine, count: count, editor: editor)
-                handled = true
-            } else if let op = token.toOperator {  // gu, g~, gU etc.
-                state = .waitingForMotion(operator: op, count: count)
-                return  // Do not reset state to idle yet
-            } else if token == .lineDown {  // gj
-                executeMotion(.screenLineDown, count: count, editor: editor)
-                handled = true
-            } else if token == .lineUp {  // gk
-                executeMotion(.screenLineUp, count: count, editor: editor)
-                handled = true
-            } else if token == .screenLineStartNonBlank {  // g^
-                executeMotion(.screenLineStartNonBlank, count: count, editor: editor)
-                handled = true
-            } else if token == .screenLineEnd {  // g$
-                executeMotion(.screenLineEnd, count: count, editor: editor)
-                handled = true
-            }
-        default:
-            break  // Other prefixes are not yet supported.
-        }
+private func handleTokenInWaitingForSuffixState(
+    _ token: EditorCommandToken, op: EditorOperator?, prefix: EditorCommandToken, count: Int,
+    editor: EditorViewModel
+) {
+    var handled = false
+    var motion: EditorMotion?
 
-        state = .idle
-        if !handled {
-            handleToken(token, editor: editor)
+    switch prefix {
+    case .prefix("f"):
+        if case .argument(let char) = token { motion = .findCharacter(char: char, forward: true, till: false) }
+    case .prefix("F"):
+        if case .argument(let char) = token { motion = .findCharacter(char: char, forward: false, till: false) }
+    case .prefix("t"):
+        if case .argument(let char) = token { motion = .findCharacter(char: char, forward: true, till: true) }
+    case .prefix("T"):
+        if case .argument(let char) = token { motion = .findCharacter(char: char, forward: false, till: true) }
+    case .prefix("g"):
+        if case .prefix("g") = prefix, token == .prefix("g") { motion = .goToFirstLine }
+        else if case .digit(0) = token { motion = .goToStartOfLine }
+        else if let newOp = token.toOperator {
+            state = .waitingForMotion(operator: newOp, count: count)
+            return
         }
+        else if token == .lineDown { motion = .screenLineDown }
+        else if token == .lineUp { motion = .screenLineUp }
+        else if token == .screenLineStartNonBlank { motion = .screenLineStartNonBlank }
+        else if token == .screenLineEnd { motion = .screenLineEnd }
+    default:
+        break
     }
 
+    if let motion = motion {
+        if let op = op {
+            // Operator-motion command, e.g., dtc
+            execute(op: op, motion: motion, count: count, editor: editor)
+        } else {
+            // Standalone motion, e.g., fc
+            executeMotion(motion, count: count, editor: editor)
+        }
+        handled = true
+    }
+
+    state = .idle
+    if !handled {
+        handleToken(token, editor: editor)
+    }
+}
     private func handleTokenInWaitingForOperatorState(
         _ token: EditorCommandToken, count: Int, editor: EditorViewModel
     ) {
@@ -477,7 +459,7 @@ public final class EditorCommandStateMachine {
             executeMotion(motion, count: count, editor: editor)
             state = .idle
         } else if case .prefix = token {
-            state = .waitingForSuffix(prefix: token, count: count)
+            state = .waitingForSuffix(operator: nil, prefix: token, count: count)
         } else if token == .yankToEndOfLine {
             execute(op: .yank, motion: .line, count: count, editor: editor)
             state = .idle
@@ -513,7 +495,10 @@ public final class EditorCommandStateMachine {
             state = .waitingForTextObjectSelector(operator: op, count: count, prefix: .inner)
         } else if token == .around {  // 'a'
             state = .waitingForTextObjectSelector(operator: op, count: count, prefix: .around)
-        } else {
+        } else if case .prefix = token {
+            state = .waitingForSuffix(operator: op, prefix: token, count: count)
+        }
+        else {
             // Invalid token in this state. Reset and re-process.
             state = .idle
             handleToken(token, editor: editor)
@@ -563,6 +548,8 @@ public final class EditorCommandStateMachine {
 
         for _ in 0..<count {
             switch motion {
+            case .findCharacter(let char, let forward, let till):
+                editor.moveCursorToCharacter(char, forward: forward, till: till)
             case .wordForward: editor.moveCursorForwardByWord(isWORD: false)
             case .WORDForward: editor.moveCursorForwardByWord(isWORD: true)
             case .wordBackward: editor.moveCursorBackwardByWord(isWORD: false)
@@ -582,7 +569,8 @@ public final class EditorCommandStateMachine {
             case .line: editor.selectLine()
             case .goToEndOfFile: break  // Already handled above'
             case .textObject(_, _):
-                // TODO: AI, implemenet this!
+                // A text object is not a standalone motion. It only makes sense with an operator.
+                // If we get here, it's a no-op.
                 break
             }
         }
@@ -625,17 +613,37 @@ public final class EditorCommandStateMachine {
     ) -> Range<Int> {
         let startPos = editor.cursorPosition
 
+        // For text objects, the range is calculated without moving the cursor.
         if case .textObject(let prefix, let selector) = motion {
-            if let range = editor.range(for: selector, at: editor.cursorPosition, inner: prefix == .inner) {
+            if let range = editor.range(for: selector, at: startPos, inner: prefix == .inner) {
                 return range
             }
-            return editor.cursorPosition..<editor.cursorPosition  // No range found
+            return startPos..<startPos  // No range found
         }
 
+        // For all other motions, we execute them to find the end position.
         executeMotion(motion, count: count, editor: editor)
         let endPos = editor.cursorPosition
 
-        if case .line = motion {
+        // IMPORTANT: getRange should not have the side effect of permanently moving the cursor.
+        // The final cursor position is determined by the operator (.delete, .change, etc.)
+        // which is called later in the `execute` function. So, we restore the original position.
+        editor.cursorPosition = startPos
+
+        // Now, calculate the range based on the motion type and start/end positions.
+        switch motion {
+        case .findCharacter(_, let forward, let till):
+            if forward {
+                return startPos ..< endPos + 1
+            } else { // backward
+                let inclusive = !till // 'F' is inclusive, 'T' is exclusive
+                let lowerBound = endPos + (inclusive ? 0 : 1)
+                return lowerBound ..< startPos + 1
+            }
+
+        case .line:
+            // The `executeMotion` for .line doesn't move the cursor, it just selects.
+            // We need to calculate the range manually.
             let textAsNSString = editor.text as NSString
             var lineNSRange = textAsNSString.lineRange(for: NSRange(location: startPos, length: 0))
 
@@ -643,8 +651,7 @@ public final class EditorCommandStateMachine {
                 var endOfLine = lineNSRange.upperBound
                 for _ in 1..<count {
                     if endOfLine >= editor.text.count { break }
-                    let nextLineRange = textAsNSString.lineRange(
-                        for: NSRange(location: endOfLine, length: 0))
+                    let nextLineRange = textAsNSString.lineRange(for: NSRange(location: endOfLine, length: 0))
                     endOfLine = nextLineRange.upperBound
                 }
                 lineNSRange.length = endOfLine - lineNSRange.location
@@ -653,14 +660,14 @@ public final class EditorCommandStateMachine {
             // For transformations, exclude the trailing newline. For others, include it.
             let isTransform = op == .lowercase || op == .uppercase || op == .swapCase
             if isTransform {
-                if lineNSRange.length > 0
-                    && textAsNSString.character(at: lineNSRange.upperBound - 1) == 10
-                {
+                if lineNSRange.length > 0 && textAsNSString.character(at: lineNSRange.upperBound - 1) == 10 {
                     return lineNSRange.location..<(lineNSRange.upperBound - 1)
                 }
             }
             return lineNSRange.location..<lineNSRange.upperBound
-        } else {
+
+        default:
+            // Default handling for simple motions like w, b, h, j, k, l, etc.
             return startPos <= endPos ? startPos..<endPos : endPos..<startPos
         }
     }
@@ -673,6 +680,19 @@ public final class EditorCommandStateMachine {
 
         let range = getRange(op: op, motion: motion, count: count, editor: editor)
 
+        // The cursor position after the action depends on the operator.
+        let finalCursorPos: Int
+        switch op {
+        case .delete:
+            finalCursorPos = range.lowerBound
+        case .yank:
+            finalCursorPos = editor.cursorPosition // Yank should not move the cursor
+        case .change:
+            finalCursorPos = range.lowerBound
+        default:
+            finalCursorPos = range.lowerBound
+        }
+
         switch op {
         case .delete: editor.delete(range: range)
         case .yank: editor.yank(range: range)
@@ -681,6 +701,14 @@ public final class EditorCommandStateMachine {
         case .uppercase: editor.transform(range: range, to: .uppercase)
         case .swapCase: editor.transform(range: range, to: .swapCase)
         }
+
+        // After the action, place the cursor at the correct position.
+        // Note: `change` handles its own cursor positioning and mode switching.
+        if op != .change {
+            editor.cursorPosition = finalCursorPos
+        }
+        
+
 
         state = .idle
     }
