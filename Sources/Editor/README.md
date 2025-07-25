@@ -59,7 +59,6 @@ Counts can be prepended to most commands to repeat them.
 -   **Count + Motion:** `3w` (move 3 words forward)
 -   **Count + Operator + Motion:** `2dw` (delete 2 words)
 -   **Count + Doubled Operator:** `4dd` (delete 4 lines)
--   **Count + Prefix + Suffix:** `10gg` (go to line 10)
 
 ### Supported Operators
 
