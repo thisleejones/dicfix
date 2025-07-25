@@ -256,6 +256,25 @@ class EditorCommandStateMachineTests: XCTestCase {
         XCTAssertEqual(editor.log.last, "goToLine(10)")
     }
 
+    func testEscapeFromWaitingState() {
+        // 1. Start a command that puts the state machine in a waiting state.
+        stateMachine.handleToken(.delete, editor: editor)
+        XCTAssert(
+            stateMachine.state.description.contains("waitingForMotion"),
+            "State should be waitingForMotion")
+
+        // 2. Press escape to cancel the command.
+        stateMachine.handleToken(.requestQuit, editor: editor)
+
+        // 3. Verify the state is now idle and no action was taken.
+        XCTAssert(stateMachine.state.description.contains("idle"), "State should be idle")
+        XCTAssert(editor.log.isEmpty, "No editor actions should have been logged")
+
+        // 4. Press escape again to quit.
+        stateMachine.handleToken(.requestQuit, editor: editor)
+        XCTAssertEqual(editor.log.last, "requestQuit")
+    }
+
     // MARK: - State Reset and Invalid Commands
 
     func testInvalidSequenceResetsState() {

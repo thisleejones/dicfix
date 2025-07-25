@@ -318,6 +318,16 @@ public final class EditorCommandStateMachine {
 
     public func handleToken(_ token: EditorCommandToken, editor: EditorViewModel) {
         print("[State: \(state)] received token: \(token)")
+
+        // If escape is pressed in any non-idle state, reset to idle.
+        if token == .requestQuit, case .idle = state {
+            editor.requestQuit()
+            return
+        } else if token == .requestQuit {
+            state = .idle
+            return
+        }
+
         switch state {
         case .idle:
             handleTokenInIdleState(token, editor: editor)
