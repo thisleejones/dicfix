@@ -721,18 +721,31 @@ open class EditorViewModel: ObservableObject {
     // MARK: - Editing primitives (used by operators)
     //==================================================
 
-    public func deleteToEndOfLine() {
-        let textAsNSString = text as NSString
-        let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
-        let endOfLine = lineRange.location + lineRange.length
-
-        // If the line ends with a newline, we want to preserve it for 'D'
-        let rangeEnd =
-            (endOfLine > lineRange.location && textAsNSString.character(at: endOfLine - 1) == 10)
-            ? endOfLine - 1 : endOfLine
-
-        let range = cursorPosition..<rangeEnd
-        delete(range: range)
+    public func deleteToEndOfLine(count: Int = 1) {
+        let firstLineInfo = text.currentLine(at: cursorPosition)
+        
+        // Calculate the end of the range for the first line.
+        var endRange = firstLineInfo.range.upperBound - (firstLineInfo.content.hasSuffix("\n") ? 1 : 0)
+        
+        // If count > 1, extend the range to include subsequent full lines.
+        if count > 1 {
+            var currentLineStart = firstLineInfo.range.upperBound
+            for i in 1..<count {
+                if currentLineStart >= text.count { break }
+                let nextLineInfo = text.currentLine(at: currentLineStart)
+                // For all but the last line, we take the whole range.
+                // For the last line, we take up to the content end.
+                if i == count - 1 {
+                    endRange = nextLineInfo.range.upperBound - (nextLineInfo.content.hasSuffix("\n") ? 1 : 0)
+                } else {
+                    endRange = nextLineInfo.range.upperBound
+                }
+                currentLineStart = nextLineInfo.range.upperBound
+            }
+        }
+        
+        let rangeToDelete = cursorPosition..<endRange
+        delete(range: rangeToDelete)
     }
 
     public func yankToEndOfLine(count: Int = 1) {
@@ -886,8 +899,8 @@ open class EditorViewModel: ObservableObject {
         delete(range: range)
     }
 
-    public func changeToEndOfLine() {
-        deleteToEndOfLine()
+    public func changeToEndOfLine(count: Int = 1) {
+        deleteToEndOfLine(count: count)
         switchToInsertMode()
     }
 

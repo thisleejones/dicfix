@@ -80,9 +80,9 @@ class MockEditorViewModel: EditorViewModel {
         super.change(range: range)
     }
 
-    override func deleteToEndOfLine() {
-        log.append("deleteToEndOfLine")
-        super.deleteToEndOfLine()
+    override func deleteToEndOfLine(count: Int) {
+        log.append("deleteToEndOfLine(count: \(count))")
+        super.deleteToEndOfLine(count: count)
     }
 
     override func yankToEndOfLine(count: Int) {
@@ -90,9 +90,9 @@ class MockEditorViewModel: EditorViewModel {
         super.yankToEndOfLine(count: count)
     }
 
-    override func changeToEndOfLine() {
-        log.append("changeToEndOfLine")
-        super.changeToEndOfLine()
+    override func changeToEndOfLine(count: Int) {
+        log.append("changeToEndOfLine(count: \(count))")
+        super.changeToEndOfLine(count: count)
     }
 
     override func deleteCurrentCharacter() {
@@ -579,6 +579,34 @@ extension EditorCommandStateMachineTests {
 
         XCTAssertTrue(editor.log.contains("delete(range: 10..<15)"), "Log was: \(editor.log)")
         XCTAssertEqual(editor.text, "one (two ()) four")
+    }
+}
+
+// MARK: - Deletion and Change Tests
+extension EditorCommandStateMachineTests {
+    func testDeleteToEndOfLine_Counted() {
+        editor.text = "one two\nthree four\nfive six"
+        editor.cursorPosition = 4 // on 't' of 'two'
+
+        // 2D
+        stateMachine.handleToken(.digit(2), editor: editor)
+        stateMachine.handleToken(.deleteToEndOfLine, editor: editor)
+
+        XCTAssertEqual(editor.text, "one \nfive six")
+        XCTAssertEqual(editor.cursorPosition, 4)
+    }
+
+    func testChangeToEndOfLine_Counted() {
+        editor.text = "one two\nthree four\nfive six"
+        editor.cursorPosition = 4 // on 't' of 'two'
+
+        // 2C
+        stateMachine.handleToken(.digit(2), editor: editor)
+        stateMachine.handleToken(.changeToEndOfLine, editor: editor)
+
+        XCTAssertEqual(editor.text, "one \nfive six")
+        XCTAssertEqual(editor.cursorPosition, 4)
+        XCTAssertTrue(editor.log.contains("switchToInsertMode"), "Should switch to insert mode after C")
     }
 }
 

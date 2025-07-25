@@ -490,7 +490,7 @@ public final class EditorCommandStateMachine {
         } else {
             // Handle standalone commands that can take a count.
             switch token {
-            case .yankToEndOfLine, .deleteChar, .deleteCharBackward, .paste, .pasteBefore:
+            case .yankToEndOfLine, .deleteToEndOfLine, .changeToEndOfLine, .deleteChar, .deleteCharBackward, .paste, .pasteBefore:
                 executeAction(.standalone(token: token, count: count), editor: editor)
             default:
                 // Invalid sequence. Reset and re-process.
@@ -605,6 +605,12 @@ public final class EditorCommandStateMachine {
             // unlike other standalone commands that are repeated via a loop here.
             if token == .yankToEndOfLine {
                 editor.yankToEndOfLine(count: count)
+                return
+            } else if token == .deleteToEndOfLine {
+                editor.deleteToEndOfLine(count: count)
+                return
+            } else if token == .changeToEndOfLine {
+                editor.changeToEndOfLine(count: count)
                 return
             }
             
