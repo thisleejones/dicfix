@@ -339,7 +339,8 @@ public final class EditorCommandStateMachine {
         case .waitingForMotion(let op, let count):
             handleTokenInWaitingForMotionState(token, op: op, count: count, editor: editor)
         case .waitingForSuffix(let op, let prefix, let count):
-            handleTokenInWaitingForSuffixState(token, op: op, prefix: prefix, count: count, editor: editor)
+            handleTokenInWaitingForSuffixState(
+                token, op: op, prefix: prefix, count: count, editor: editor)
         case .waitingForTextObjectSelector(let op, let count, let prefix):
             handleTokenInWaitingForTextObjectSelectorState(
                 token, op: op, count: count, prefix: prefix, editor: editor)
@@ -387,8 +388,7 @@ public final class EditorCommandStateMachine {
             case .deleteToEndOfLine:
                 executeAction(.standalone(token: token, count: 1), editor: editor)
             case .yankToEndOfLine:
-                // In Vim, Y is a synonym for yy, which yanks the whole line.
-                execute(op: .yank, motion: .line, count: 1, editor: editor)
+                executeAction(.standalone(token: token, count: 1), editor: editor)
             case .deleteChar:
                 executeAction(.standalone(token: token, count: 1), editor: editor)
             case .deleteCharBackward:
@@ -412,53 +412,67 @@ public final class EditorCommandStateMachine {
         }
     }
 
-private func handleTokenInWaitingForSuffixState(
-    _ token: EditorCommandToken, op: EditorOperator?, prefix: EditorCommandToken, count: Int,
-    editor: EditorViewModel
-) {
-    var handled = false
-    var motion: EditorMotion?
+    private func handleTokenInWaitingForSuffixState(
+        _ token: EditorCommandToken, op: EditorOperator?, prefix: EditorCommandToken, count: Int,
+        editor: EditorViewModel
+    ) {
+        var handled = false
+        var motion: EditorMotion?
 
-    switch prefix {
-    case .prefix("f"):
-        if case .argument(let char) = token { motion = .findCharacter(char: char, forward: true, till: false) }
-    case .prefix("F"):
-        if case .argument(let char) = token { motion = .findCharacter(char: char, forward: false, till: false) }
-    case .prefix("t"):
-        if case .argument(let char) = token { motion = .findCharacter(char: char, forward: true, till: true) }
-    case .prefix("T"):
-        if case .argument(let char) = token { motion = .findCharacter(char: char, forward: false, till: true) }
-    case .prefix("g"):
-        if case .prefix("g") = prefix, token == .prefix("g") { motion = .goToFirstLine }
-        else if case .digit(0) = token { motion = .goToStartOfLine }
-        else if let newOp = token.toOperator {
-            state = .waitingForMotion(operator: newOp, count: count)
-            return
+        switch prefix {
+        case .prefix("f"):
+            if case .argument(let char) = token {
+                motion = .findCharacter(char: char, forward: true, till: false)
+            }
+        case .prefix("F"):
+            if case .argument(let char) = token {
+                motion = .findCharacter(char: char, forward: false, till: false)
+            }
+        case .prefix("t"):
+            if case .argument(let char) = token {
+                motion = .findCharacter(char: char, forward: true, till: true)
+            }
+        case .prefix("T"):
+            if case .argument(let char) = token {
+                motion = .findCharacter(char: char, forward: false, till: true)
+            }
+        case .prefix("g"):
+            if case .prefix("g") = prefix, token == .prefix("g") {
+                motion = .goToFirstLine
+            } else if case .digit(0) = token {
+                motion = .goToStartOfLine
+            } else if let newOp = token.toOperator {
+                state = .waitingForMotion(operator: newOp, count: count)
+                return
+            } else if token == .lineDown {
+                motion = .screenLineDown
+            } else if token == .lineUp {
+                motion = .screenLineUp
+            } else if token == .screenLineStartNonBlank {
+                motion = .screenLineStartNonBlank
+            } else if token == .screenLineEnd {
+                motion = .screenLineEnd
+            }
+        default:
+            break
         }
-        else if token == .lineDown { motion = .screenLineDown }
-        else if token == .lineUp { motion = .screenLineUp }
-        else if token == .screenLineStartNonBlank { motion = .screenLineStartNonBlank }
-        else if token == .screenLineEnd { motion = .screenLineEnd }
-    default:
-        break
-    }
 
-    if let motion = motion {
-        if let op = op {
-            // Operator-motion command, e.g., dtc
-            execute(op: op, motion: motion, count: count, editor: editor)
-        } else {
-            // Standalone motion, e.g., fc
-            executeMotion(motion, count: count, editor: editor)
+        if let motion = motion {
+            if let op = op {
+                // Operator-motion command, e.g., dtc
+                execute(op: op, motion: motion, count: count, editor: editor)
+            } else {
+                // Standalone motion, e.g., fc
+                executeMotion(motion, count: count, editor: editor)
+            }
+            handled = true
         }
-        handled = true
-    }
 
-    state = .idle
-    if !handled {
-        handleToken(token, editor: editor)
+        state = .idle
+        if !handled {
+            handleToken(token, editor: editor)
+        }
     }
-}
     private func handleTokenInWaitingForOperatorState(
         _ token: EditorCommandToken, count: Int, editor: EditorViewModel
     ) {
@@ -473,25 +487,18 @@ private func handleTokenInWaitingForSuffixState(
             state = .idle
         } else if case .prefix = token {
             state = .waitingForSuffix(operator: nil, prefix: token, count: count)
-        } else if token == .yankToEndOfLine {
-            execute(op: .yank, motion: .line, count: count, editor: editor)
-            state = .idle
-        } else if token == .deleteChar {
-            executeAction(.standalone(token: token, count: count), editor: editor)
-            state = .idle
-        } else if token == .deleteCharBackward {
-            executeAction(.standalone(token: token, count: count), editor: editor)
-            state = .idle
-        } else if token == .paste {
-            executeAction(.standalone(token: token, count: count), editor: editor)
-            state = .idle
-        } else if token == .pasteBefore {
-            executeAction(.standalone(token: token, count: count), editor: editor)
-            state = .idle
         } else {
-            // Invalid sequence. Reset and re-process.
+            // Handle standalone commands that can take a count.
+            switch token {
+            case .yankToEndOfLine, .deleteChar, .deleteCharBackward, .paste, .pasteBefore:
+                executeAction(.standalone(token: token, count: count), editor: editor)
+            default:
+                // Invalid sequence. Reset and re-process.
+                state = .idle
+                handleToken(token, editor: editor)
+                return // Return to avoid resetting state again below
+            }
             state = .idle
-            handleToken(token, editor: editor)
         }
     }
 
@@ -510,8 +517,7 @@ private func handleTokenInWaitingForSuffixState(
             state = .waitingForTextObjectSelector(operator: op, count: count, prefix: .around)
         } else if case .prefix = token {
             state = .waitingForSuffix(operator: op, prefix: token, count: count)
-        }
-        else {
+        } else {
             // Invalid token in this state. Reset and re-process.
             state = .idle
             handleToken(token, editor: editor)
@@ -595,6 +601,13 @@ private func handleTokenInWaitingForSuffixState(
         case .standard(let op, let motion, let count):
             execute(op: op, motion: motion, count: count, editor: editor)
         case .standalone(let token, let count):
+            // Y is a special case because the view model handles the count directly,
+            // unlike other standalone commands that are repeated via a loop here.
+            if token == .yankToEndOfLine {
+                editor.yankToEndOfLine(count: count)
+                return
+            }
+            
             // We only support a limited set of repeatable standalone commands.
             for _ in 0..<count {
                 switch token {
@@ -647,11 +660,11 @@ private func handleTokenInWaitingForSuffixState(
         switch motion {
         case .findCharacter(_, let forward, let till):
             if forward {
-                return startPos ..< endPos + 1
-            } else { // backward
-                let inclusive = !till // 'F' is inclusive, 'T' is exclusive
+                return startPos..<endPos + 1
+            } else {  // backward
+                let inclusive = !till  // 'F' is inclusive, 'T' is exclusive
                 let lowerBound = endPos + (inclusive ? 0 : 1)
-                return lowerBound ..< startPos + 1
+                return lowerBound..<startPos + 1
             }
 
         case .line:
@@ -664,7 +677,8 @@ private func handleTokenInWaitingForSuffixState(
                 var endOfLine = lineNSRange.upperBound
                 for _ in 1..<count {
                     if endOfLine >= editor.text.count { break }
-                    let nextLineRange = textAsNSString.lineRange(for: NSRange(location: endOfLine, length: 0))
+                    let nextLineRange = textAsNSString.lineRange(
+                        for: NSRange(location: endOfLine, length: 0))
                     endOfLine = nextLineRange.upperBound
                 }
                 lineNSRange.length = endOfLine - lineNSRange.location
@@ -673,7 +687,9 @@ private func handleTokenInWaitingForSuffixState(
             // For transformations, exclude the trailing newline. For others, include it.
             let isTransform = op == .lowercase || op == .uppercase || op == .swapCase
             if isTransform {
-                if lineNSRange.length > 0 && textAsNSString.character(at: lineNSRange.upperBound - 1) == 10 {
+                if lineNSRange.length > 0
+                    && textAsNSString.character(at: lineNSRange.upperBound - 1) == 10
+                {
                     return lineNSRange.location..<(lineNSRange.upperBound - 1)
                 }
             }
@@ -693,13 +709,19 @@ private func handleTokenInWaitingForSuffixState(
 
         let range = getRange(op: op, motion: motion, count: count, editor: editor)
 
-        // The cursor position after the action depends on the operator.
+        // The cursor position after the action depends on the operator and motion.
         let finalCursorPos: Int
         switch op {
         case .delete:
             finalCursorPos = range.lowerBound
         case .yank:
-            finalCursorPos = editor.cursorPosition // Yank should not move the cursor
+            // For linewise yanks (yy), the cursor moves to the start of the first yanked line.
+            // For other yanks (e.g., y$), it stays put.
+            if case .line = motion {
+                finalCursorPos = range.lowerBound
+            } else {
+                finalCursorPos = editor.cursorPosition
+            }
         case .change:
             finalCursorPos = range.lowerBound
         default:
@@ -720,8 +742,6 @@ private func handleTokenInWaitingForSuffixState(
         if op != .change {
             editor.cursorPosition = finalCursorPos
         }
-        
-
 
         state = .idle
     }

@@ -735,16 +735,40 @@ open class EditorViewModel: ObservableObject {
         delete(range: range)
     }
 
-    public func yankToEndOfLine() {
-        let textAsNSString = text as NSString
-        let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
-        let endOfLine = lineRange.location + lineRange.length
-        let rangeEnd =
-            (endOfLine > lineRange.location && textAsNSString.character(at: endOfLine - 1) == 10)
-            ? endOfLine - 1 : endOfLine
-
-        let range = cursorPosition..<rangeEnd
-        yank(range: range)
+    public func yankToEndOfLine(count: Int = 1) {
+        var rangesToYank: [Range<Int>] = []
+        
+        // 1. Handle the first line: from cursor to end of line content.
+        let firstLineInfo = text.currentLine(at: cursorPosition)
+        let firstLineContentEnd = firstLineInfo.range.upperBound - (firstLineInfo.content.hasSuffix("\n") ? 1 : 0)
+        if cursorPosition < firstLineContentEnd {
+            rangesToYank.append(cursorPosition..<firstLineContentEnd)
+        }
+        
+        // 2. Handle subsequent full lines.
+        if count > 1 {
+            var currentLineStart = firstLineInfo.range.upperBound
+            for _ in 1..<count {
+                if currentLineStart >= text.count { break }
+                
+                let nextLineInfo = text.currentLine(at: currentLineStart)
+                rangesToYank.append(nextLineInfo.range)
+                currentLineStart = nextLineInfo.range.upperBound
+            }
+        }
+        
+        // 3. Join the text from the calculated ranges.
+        let yankedText = rangesToYank.map { range -> String in
+            let from = text.index(text.startIndex, offsetBy: range.lowerBound)
+            let to = text.index(text.startIndex, offsetBy: range.upperBound)
+            // Ensure we don't add an extra newline if the range already includes it.
+            let content = String(text[from..<to])
+            return content.hasSuffix("\n") ? String(content.dropLast()) : content
+        }.joined(separator: "\n")
+        
+        setRegister(to: yankedText)
+        
+        // Per Vim behavior, the cursor does not move after a Y command.
     }
 
     public func delete(range: Range<Int>) {
