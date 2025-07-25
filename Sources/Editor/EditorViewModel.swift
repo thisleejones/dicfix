@@ -656,19 +656,28 @@ open class EditorViewModel: ObservableObject {
 
     public func goToLine(_ line: Int) {
         print("Going to line: \(line)")
-        // A count of 0 or 1 for 'G' goes to the first line.
-        // 'gg' also results in a call to goToLine(1).
+
         if line <= 1 {
             moveCursorToBeginningOfFile()
+            return
         }
-        // A count of Int.max signifies going to the last line.
-        else if line == Int.max {
+        if line == Int.max {
             moveCursorToEndOfFile()
+            return
+        }
+
+        let lines = text.components(separatedBy: .newlines)
+        let targetLine = line - 1 // 0-indexed
+
+        if targetLine < lines.count {
+            // Calculate the character index for the start of the target line.
+            var charIndex = 0
+            for i in 0..<targetLine {
+                charIndex += lines[i].count + 1 // +1 for the newline character
+            }
+            self.cursorPosition = charIndex
         } else {
-            // This is a placeholder for real line-based navigation.
-            // For now, any other line number also goes to the end.
-            // TODO: Implement mapping a line number to a cursor index.
-            print("goToLine for specific number (\(line)) not yet implemented.")
+            // Line number is out of bounds, go to the end of the file.
             moveCursorToEndOfFile()
         }
     }

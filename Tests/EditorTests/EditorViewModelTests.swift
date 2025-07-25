@@ -142,6 +142,30 @@ class EditorViewModelTests: XCTestCase {
                 XCTAssertEqual(editor.cursorPosition, 7, "Failed on a line with only whitespace")
         }
 
+        func testGoToLine() {
+                editor.text = "line 1\nline 2\nline 3" // 3 lines
+
+                // Go to line 2
+                editor.goToLine(2)
+                XCTAssertEqual(editor.cursorPosition, 7, "Failed to go to line 2") // "line 1\n" is 7 chars
+
+                // Go to line 3
+                editor.goToLine(3)
+                XCTAssertEqual(editor.cursorPosition, 14, "Failed to go to line 3") // "line 2\n" is 7 chars
+
+                // Go to line 1
+                editor.goToLine(1)
+                XCTAssertEqual(editor.cursorPosition, 0, "Failed to go to line 1")
+
+                // Go to a line number that is too high
+                editor.goToLine(100)
+                XCTAssertEqual(editor.cursorPosition, editor.text.count, "Failed to go to end of file for out-of-bounds line")
+
+                // Go to last line via Int.max
+                editor.goToLine(Int.max)
+                XCTAssertEqual(editor.cursorPosition, editor.text.count, "Failed to go to end of file for Int.max")
+        }
+
         // MARK: - Character Movement
 
         func testMoveCursorLeftAndRight() {
