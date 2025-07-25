@@ -172,7 +172,8 @@ This project uses a `Makefile` to simplify the build process. It relies on [Tuis
 1.  **Install Tuist**:
     If you don't have it, you can install it easily.
     ```bash
-    curl -Ls https://tuist.io/install.sh | bash
+    brew tap tuist/tuist
+    brew install --formula tuist
     ```
 
 2.  **Clone the repository**:

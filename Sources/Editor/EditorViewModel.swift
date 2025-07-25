@@ -308,6 +308,11 @@ open class EditorViewModel: ObservableObject {
         let lineContent = Array(line.content)
         let cursorRelativePos = cursorPosition - line.range.lowerBound
 
+        // Ensure the cursor is within the line's bounds before proceeding.
+        guard cursorRelativePos < lineContent.count else {
+            return
+        }
+
         // Define the search range on the current line
         let searchRange: any Sequence<Int> =
             forward

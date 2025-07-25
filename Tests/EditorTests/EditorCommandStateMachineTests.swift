@@ -441,6 +441,46 @@ extension EditorCommandStateMachineTests {
     }
 }
 
+// MARK: - Movement Tests
+extension EditorCommandStateMachineTests {
+    // MARK: dgg (Delete to Beginning of File)
+    func testDeleteToBeginningOfFile() {
+        editor.text = """
+            line 1
+            line 2
+            line 3
+            """
+
+        editor.cursorPosition = 10  // Cursor on 'e' of 'line 2'
+
+        // dgg - delete from cursor to beginning of file
+        stateMachine.handleToken(.delete, editor: editor)
+        stateMachine.handleToken(.prefix("g"), editor: editor)
+        stateMachine.handleToken(.prefix("g"), editor: editor)
+
+        XCTAssertEqual(editor.text, "line 3")
+        XCTAssertEqual(editor.cursorPosition, 4)
+    }
+
+    // MARK: dG (Delete to End of File)
+    func testDeleteToEndOfFile() {
+        editor.text = """
+            line 1
+            line 2
+            line 3
+            """
+
+        editor.cursorPosition = 10  // Cursor on 'e' of 'line 2'
+
+        // dG - delete from cursor to end of file
+        stateMachine.handleToken(.delete, editor: editor)
+        stateMachine.handleToken(.goToEndOfFile, editor: editor)
+
+        XCTAssertEqual(editor.text, "line 1\n")
+        XCTAssertEqual(editor.cursorPosition, 4)
+    }
+}
+
 // MARK: - Transformation (g~, gu, gU) Tests
 extension EditorCommandStateMachineTests {
     // g~ (swap case)

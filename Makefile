@@ -10,7 +10,7 @@ INSTALL_DIR ?= /Applications
 EXECUTABLE_PATH = "$(BUILD_DIR)/$(CONFIGURATION)/$(PROJECT_NAME).app/Contents/MacOS/$(PROJECT_NAME)"
 TESTS ?=
 
-.PHONY: all build clean run install lint test release
+.PHONY: all build clean run install lint test test-xc release
 
 all: build
 
@@ -49,3 +49,13 @@ lint:
 test:
 	@echo "Testing..."
 	@tuist test --clean --configuration $(CONFIGURATION)
+
+test-xc:
+	@echo "Testing..."
+	@if command -v xcbeautify &> /dev/null; then \
+		xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION) \
+		$(foreach T,$(TESTS),-only-testing:$(T)) test | xcbeautify --disable-logging; \
+	else \
+		xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION) \
+		$(foreach T,$(TESTS),-only-testing:$(T)) test; \
+	fi
