@@ -527,3 +527,38 @@ class EditorViewModelTests: XCTestCase {
                 XCTAssert(editor.mode is NormalMode)
         }
 }
+
+// MARK: - Text Object Range Tests
+extension EditorViewModelTests {
+    func testInnerWordRange() {
+        editor.text = "one two-three"
+        
+        // On a word
+        var range = editor.range(for: .word, at: 1, inner: true)
+        XCTAssertEqual(range, 0..<3)
+        
+        // On whitespace
+        range = editor.range(for: .word, at: 3, inner: true)
+        XCTAssertEqual(range, 3..<4)
+        
+        // On punctuation
+        range = editor.range(for: .word, at: 7, inner: true)
+        XCTAssertEqual(range, 7..<8)
+    }
+
+    func testInnerWORDRange() {
+        editor.text = "one two-three"
+        
+        // On a word
+        var range = editor.range(for: .WORD, at: 1, inner: true)
+        XCTAssertEqual(range, 0..<3)
+        
+        // On whitespace
+        range = editor.range(for: .WORD, at: 3, inner: true)
+        XCTAssertEqual(range, 3..<4)
+        
+        // On punctuation, should select the whole WORD
+        range = editor.range(for: .WORD, at: 7, inner: true)
+        XCTAssertEqual(range, 4..<13)
+    }
+}

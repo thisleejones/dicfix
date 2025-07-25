@@ -522,4 +522,17 @@ extension EditorCommandStateMachineTests {
         XCTAssertTrue(editor.log.contains("delete(range: 3..<4)"), "Log was: \(editor.log)")
         XCTAssertEqual(editor.text, "onetwo three")
     }
+
+    func testDeleteInnerWORD() {
+        editor.text = "one-two-three four"
+        editor.cursorPosition = 5  // on 'w' of 'two'
+
+        // diW
+        stateMachine.handleToken(.delete, editor: editor)
+        stateMachine.handleToken(.inner, editor: editor)  // 'i'
+        stateMachine.handleToken(.WORDForward, editor: editor)  // 'W'
+
+        XCTAssertTrue(editor.log.contains("delete(range: 0..<13)"), "Log was: \(editor.log)")
+        XCTAssertEqual(editor.text, " four")
+    }
 }

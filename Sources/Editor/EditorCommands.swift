@@ -38,6 +38,24 @@ public enum TextObjectSelector {
     case parentheses
     case curlyBraces
     case squareBrackets
+
+    var delimiter: Character? {
+        switch self {
+        case .singleQuote: return "'"
+        case .doubleQuote: return "\""
+        case .backtick: return "`"
+        default: return nil
+        }
+    }
+
+    var delimiters: (open: Character, close: Character)? {
+        switch self {
+        case .parentheses: return ("(", ")")
+        case .curlyBraces: return ("{", "}")
+        case .squareBrackets: return ("[", "]")
+        default: return nil
+        }
+    }
 }
 
 /// Describes a region of text to be affected by an operator.
@@ -69,7 +87,8 @@ public enum EditorCommandState: CustomStringConvertible {
     case waitingForMotion(operator: EditorOperator, count: Int)
     case waitingForOperator(count: Int)
     case waitingForSuffix(prefix: EditorCommandToken, count: Int)
-    case waitingForTextObjectSelector(operator: EditorOperator, count: Int, prefix: TextObjectPrefix)
+    case waitingForTextObjectSelector(
+        operator: EditorOperator, count: Int, prefix: TextObjectPrefix)
 
     public var description: String {
         switch self {
@@ -82,7 +101,8 @@ public enum EditorCommandState: CustomStringConvertible {
         case .waitingForSuffix(let prefix, let count):
             return "waitingForSuffix(prefix: \(prefix), count: \(count))"
         case .waitingForTextObjectSelector(let op, let count, let prefix):
-            return "waitingForTextObjectSelector(operator: \(op), count: \(count), prefix: \(prefix))"
+            return
+                "waitingForTextObjectSelector(operator: \(op), count: \(count), prefix: \(prefix))"
         }
     }
 }
@@ -498,6 +518,8 @@ public final class EditorCommandStateMachine {
         switch token {
         case .wordForward:
             selector = .word
+        case .WORDForward:
+            selector = .WORD
         default:
             break
         }
@@ -584,12 +606,8 @@ public final class EditorCommandStateMachine {
         let startPos = editor.cursorPosition
 
         if case .textObject(let prefix, let selector) = motion {
-            if selector == .word {
-                if prefix == .inner {
-                    if let range = editor.innerWordRange(at: editor.cursorPosition) {
-                        return range
-                    }
-                }
+            if let range = editor.range(for: selector, at: editor.cursorPosition, inner: prefix == .inner) {
+                return range
             }
             return editor.cursorPosition..<editor.cursorPosition  // No range found
         }

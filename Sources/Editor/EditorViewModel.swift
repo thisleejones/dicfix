@@ -324,36 +324,69 @@ open class EditorViewModel: ObservableObject {
         }
     }
 
-    public func innerWordRange(at position: Int) -> Range<Int>? {
+    public func range(for object: TextObjectSelector, at position: Int, inner: Bool) -> Range<Int>? {
+        switch object {
+        case .word, .WORD:
+            return wordRange(at: position, isWORD: object == .WORD, inner: inner)
+        case .singleQuote, .doubleQuote, .backtick:
+            guard let delimiter = object.delimiter else { return nil }
+            return findSurrounding(char: delimiter, at: position, inner: inner)
+        case .parentheses, .curlyBraces, .squareBrackets:
+            guard let delimiters = object.delimiters else { return nil }
+            return findSurrounding(open: delimiters.open, close: delimiters.close, at: position, inner: inner)
+        default:
+            return nil
+        }
+    }
+
+    private func wordRange(at position: Int, isWORD: Bool, inner: Bool) -> Range<Int>? {
         let textChars = Array(text)
         guard position < textChars.count else { return nil }
 
-        let isWordChar = { (c: Character) in c.isLetter || c.isNumber || c == "_" }
         let charAtPosition = textChars[position]
-
         let charactersToMatch: (Character) -> Bool
-        if isWordChar(charAtPosition) {
-            charactersToMatch = isWordChar
-        } else if charAtPosition.isWhitespace {
-            charactersToMatch = { $0.isWhitespace }
+
+        if isWORD {
+            if charAtPosition.isWhitespace {
+                charactersToMatch = { $0.isWhitespace }
+            } else {
+                charactersToMatch = { !$0.isWhitespace }
+            }
         } else {
-            // Not on a word or whitespace, so no "inner word" range.
-            return nil
+            let isWordChar = { (c: Character) in c.isLetter || c.isNumber || c == "_" }
+            if isWordChar(charAtPosition) {
+                charactersToMatch = isWordChar
+            } else if charAtPosition.isWhitespace {
+                charactersToMatch = { $0.isWhitespace }
+            } else {
+                // For non-WORD, punctuation is its own block.
+                charactersToMatch = { !isWordChar($0) && !$0.isWhitespace }
+            }
         }
 
-        // Find start of the block (word or whitespace)
+        // Find start of the block
         var start = position
         while start > 0 && charactersToMatch(textChars[start - 1]) {
             start -= 1
         }
 
-        // Find end of the block (word or whitespace)
+        // Find end of the block
         var end = position
         while end < text.count - 1 && charactersToMatch(textChars[end + 1]) {
             end += 1
         }
 
         return start..<(end + 1)
+    }
+
+    private func findSurrounding(char: Character, at position: Int, inner: Bool) -> Range<Int>? {
+        // TODO: Implement this
+        return nil
+    }
+
+    private func findSurrounding(open: Character, close: Character, at position: Int, inner: Bool) -> Range<Int>? {
+        // TODO: Implement this
+        return nil
     }
 
     // MARK: - Word Movement Logic
