@@ -12,6 +12,7 @@ The motivation for this project was to use voice dictation with modern CLI tools
 ## Features
 
 -   **Global Dictation**: Use dictation in any application, whether it supports it or not.
+-   **Powerful Vim Mode**: A fully-featured, Vim-style modal editor is built-in, supporting motions, operators, counts, and text objects (`iw`, `i"`, `a{`, etc.). See the [Editor Guide](./Sources/Editor/README.md) for a complete list of commands and architectural details.
 -   **Multiple Targets**: Send text to the clipboard, paste it directly, type it out as keystrokes, or print it to standard output.
 -   **Seamless Workflow**: The app automatically closes when it loses focus. To send the text, press `Enter`.
 -   **Highly Customizable**: Configure the window's appearance, position, fonts, colors, and default target via a simple JSON file.
@@ -65,6 +66,7 @@ The next time you launch DicFix, it will create and read its `settings.json` and
   "promptSuffix": "$ ",
   "windowWidth": 600,
   "target": "paste",
+  "vimMode": true,
   "dictationKey": "F5",
   "dictationKeyMods": "Command|Shift",
   "dictationKeyDelay": "250ms",
@@ -74,6 +76,7 @@ The next time you launch DicFix, it will create and read its `settings.json` and
 
 ### Options
 
+-   **`vimMode`**: Enables or disables the Vim-style modal editor. Defaults to `false`.
 -   **`target`**: The default output destination for the text.
     -   `"clipboard"` or `"pasteboard"`: Copies the text to the system clipboard.
     -   `"paste"`: Copies the text and then simulates a `Cmd+V` keystroke to paste it.
@@ -125,6 +128,7 @@ dicfix --dictation-key "F6" --dictation-key-mods "Command|Shift"
 
 ### Arguments
 
+-   `--vim-mode [true|false]`: Enables or disables Vim mode for the current run. If no value is provided, it defaults to `true`.
 -   `--target <target>`: Overrides the `target` from `settings.json`. Valid targets are `clipboard`, `paste`, `keystroke`, and `stdout`.
 -   `--prompt <string>`: Overrides the `promptBody` setting for the current run.
 -   `--placeholder <string>`: Overrides the `placeholder` text for the current run.
@@ -140,12 +144,8 @@ The `dictationKey` option currently supports function keys `F1` through `F20`.
 
 ## Roadmap
 
-- [ ] **VIM Motions**: Implement basic VIM-style navigation and editing within the text field.
-    - [ ] **Navigation**: `h` (left), `j` (down), `k` (up), `l` (right)
-    - [ ] **Word Movement**: `w` (next word), `b` (previous word)
-    - [ ] **Line Movement**: `0` (start of line), `$` (end of line)
-    - [ ] **Mode Switching**: `i` (insert mode), `a` (append mode), `esc` (normal mode)
-    - [ ] **Editing**: `x` (delete character), `dd` (delete line), `yy` (yank/copy line), `p` (paste)
+- [ ] **Visual Mode**: Implement `v` (visual), `V` (visual line), and `Ctrl-V` (visual block) modes for selecting text.
+- [ ] **Enhanced Hotkey Support**: Add support for double-tap activation and reserved key combinations, similar to the native macOS dictation settings.
 - [ ] **Configurable Closing Behavior**: Add a `--keep-alive` flag or `--mode` setting to prevent the app from closing on focus loss or after submission, allowing for multiple dictations in one session.
 - [ ] **Fix Keystroke Target**: The `keystroke` target is currently non-functional and needs to be repaired.
 
