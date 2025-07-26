@@ -192,14 +192,14 @@ class EditorCommandStateMachineTests: XCTestCase {
 
         // I
         editor.text = "one two three"
-        editor.cursorPosition = 4 // on 't' of 'two'
+        editor.cursorPosition = 4  // on 't' of 'two'
         stateMachine.handleToken(.switchToInsertModeAtBeginningOfLine, editor: editor)
         XCTAssertEqual(editor.log.last, "switchToInsertMode()")
         XCTAssertEqual(editor.cursorPosition, 0)
         XCTAssertTrue(editor.mode is InsertMode)
 
         // A
-        editor.cursorPosition = 4 // on 't' of 'two'
+        editor.cursorPosition = 4  // on 't' of 'two'
         stateMachine.handleToken(.switchToInsertModeAtEndOfLine, editor: editor)
         XCTAssertEqual(editor.log.last, "switchToInsertMode()")
         XCTAssertEqual(editor.cursorPosition, 13)
@@ -909,9 +909,9 @@ extension EditorCommandStateMachineTests {
         stateMachine.handleToken(.repeatLastFindForward, editor: editor)
         XCTAssertEqual(editor.cursorPosition, 8)  // Jumps to 'o' in "one"
     }
-//           11234567890
-// 01234567890
-// one two one three
+    //           11234567890
+    // 01234567890
+    // one two one three
     func testRepeatFindForwardAfterBackwardFind() {
         editor.text = "one two one three"
         editor.cursorPosition = 12

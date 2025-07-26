@@ -204,9 +204,31 @@ class EditorViewModelTests: XCTestCase {
                 editor.openLineBelow()
 
                 XCTAssertEqual(editor.text, "line one\n")
-                XCTAssertEqual(editor.cursorPosition, 8)
+                XCTAssertEqual(editor.cursorPosition, 9)
                 XCTAssert(editor.mode is InsertMode)
         }
+
+        func testOpenLineBelowOnLastLineWithoutNewline() {                                   
+                editor.text = "hello world"                                                      
+                editor.cursorPosition = 5 // on 'o'                                              
+
+                editor.openLineBelow()                                                           
+
+                XCTAssertEqual(editor.text, "hello world\n")                                     
+                XCTAssertEqual(editor.cursorPosition, 12) // Cursor should be on the new line    
+                XCTAssertTrue(editor.mode is InsertMode, "Should be in insert mode")             
+        }                                                                                    
+
+        func testOpenLineBelowInEmptyFile() {                                                
+                editor.text = ""                                                                 
+                editor.cursorPosition = 0                                                        
+
+                editor.openLineBelow()                                                           
+
+                XCTAssertEqual(editor.text, "\n")                                                
+                XCTAssertEqual(editor.cursorPosition, 1) // Cursor should be on the new line     
+                XCTAssertTrue(editor.mode is InsertMode, "Should be in insert mode")             
+        }                                                                                    
 
         func testOpenLineAbove() {
                 editor.text = "line one"

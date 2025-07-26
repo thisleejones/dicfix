@@ -726,9 +726,14 @@ open class EditorViewModel: ObservableObject {
         saveUndoState()
         let textAsNSString = text as NSString
         let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
-        let insertPosition = lineRange.location + lineRange.length
+        
+        // Always insert after the current line's content, before any existing newline.
+        let endOfLine = lineRange.upperBound
+        let hasNewline = !text.isEmpty && endOfLine > 0 && textAsNSString.character(at: endOfLine - 1) == 10
+        let insertPosition = hasNewline ? endOfLine - 1 : endOfLine
+        
         text.insert("\n", at: text.index(text.startIndex, offsetBy: insertPosition))
-        cursorPosition = insertPosition
+        cursorPosition = insertPosition + 1
         switchToInsertMode()
     }
 
