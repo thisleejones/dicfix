@@ -109,6 +109,8 @@ public enum Key: CGKeyCode {
     case enter = 36
     case keypadEnter = 76
     case `repeat` = 47  // '.' key
+    case semicolon = 41
+    case comma = 43
 }
 
 // 1) NormalizedKey distinguishes w vs W, b vs B, etc.

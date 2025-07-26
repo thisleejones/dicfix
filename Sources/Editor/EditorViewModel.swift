@@ -77,6 +77,7 @@ open class EditorViewModel: ObservableObject {
         visualModeCount = 0
         mode = InsertMode()
     }
+
     public func switchToNormalMode() {
         print("[EditorViewModel] Switching to NormalModeState")
         clearSelection()
@@ -96,6 +97,15 @@ open class EditorViewModel: ObservableObject {
         visualModeCount = 0
         mode = VisualLineMode(anchor: cursorPosition)
         updateSelection()
+    }
+
+    public func moveCursorAfterEndOfLine() {
+        let line = text.currentLine(at: cursorPosition)
+        var insertPosition = line.range.upperBound
+        if !line.content.isEmpty && line.content.last == "\n" {
+            insertPosition -= 1
+        }
+        cursorPosition = insertPosition
     }
 
     // MARK: App-level intents
@@ -1016,6 +1026,30 @@ extension EditorViewModel {
         let index = text.index(text.startIndex, offsetBy: cursorPosition)
         text.insert(contentsOf: char, at: index)
         cursorPosition += char.count
+    }
+
+    public func appendCharacterAtEndOfLine(_ content: String) {
+        // 1. Ensure this action can be undone.
+        saveUndoState()
+
+        // 2. Get information about the line the cursor is currently on.
+        let line = text.currentLine(at: cursorPosition)
+
+        // 3. Determine the precise insertion point.
+        //    Start with the end of the line's range.
+        var insertPosition = line.range.upperBound
+
+        // 4. If the line ends with a newline, we must insert *before* it.
+        if !line.content.isEmpty && line.content.last == "\n" {
+            insertPosition -= 1
+        }
+
+        // 5. Perform the text insertion.
+        let index = text.index(text.startIndex, offsetBy: insertPosition)
+        text.insert(contentsOf: content, at: index)
+
+        // 6. The cursor should be placed after the newly inserted content.
+        cursorPosition = insertPosition + content.count
     }
 
     public func backspace() {

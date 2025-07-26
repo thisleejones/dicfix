@@ -151,23 +151,25 @@ public enum EditorCommandToken: Equatable {
     case around  // a
 
     // Standalone commands
-    case switchToInsertMode
-    case switchToInsertModeAndMove
+    case switchToInsertMode // i
+    case switchToInsertModeAfterCursor // a
+    case switchToInsertModeAtBeginningOfLine // I
+    case switchToInsertModeAtEndOfLine // A
     case switchToVisualMode
     case switchToVisualLineMode
     case openLineBelow
     case openLineAbove
     case splitLine
-    case deleteToEndOfLine  // D
-    case yankToEndOfLine  // Y
-    case deleteChar  // x
-    case deleteCharBackward  // X
-    case changeToEndOfLine  // C
-    case repeatLastAction  // .
-    case repeatLastFindForward  // ;
-    case repeatLastFindBackward  // ,
-    case paste  // p
-    case pasteBefore  // P
+    case deleteToEndOfLine // D
+    case yankToEndOfLine // Y
+    case deleteChar // x
+    case deleteCharBackward // X
+    case changeToEndOfLine // C
+    case repeatLastAction // .
+    case repeatLastFindForward // ;
+    case repeatLastFindBackward // ,
+    case paste // p
+    case pasteBefore // P
     case requestSubmit
     case requestQuit
     case undo
@@ -303,12 +305,17 @@ public enum EditorCommandToken: Equatable {
             if case .waitingForMotion = state {
                 return .inner
             }
-            return .switchToInsertMode
+
+            return keyEvent.mods.isOnlyShift
+                ? .switchToInsertModeAtBeginningOfLine
+                : .switchToInsertMode
         case .a:
             if case .waitingForMotion = state {
                 return .around
             }
-            return .switchToInsertModeAndMove
+            return keyEvent.mods.isOnlyShift
+                ? .switchToInsertModeAtEndOfLine
+                : .switchToInsertModeAfterCursor
         case .o: return .openLineBelow
         case .v: return .switchToVisualMode
         case .x: return .deleteChar
@@ -389,34 +396,31 @@ public final class EditorCommandStateMachine {
             switch token {
             case .switchToInsertMode:
                 editor.switchToInsertMode()
-            case .switchToInsertModeAndMove:
+            case .switchToInsertModeAfterCursor:
                 editor.moveCursorToNextCharacter()
+                editor.switchToInsertMode()
+            case .switchToInsertModeAtBeginningOfLine:
+                editor.moveCursorToBeginningOfLine()
+                editor.switchToInsertMode()
+            case .switchToInsertModeAtEndOfLine:
+                editor.moveCursorAfterEndOfLine()
                 editor.switchToInsertMode()
             case .switchToVisualMode:
                 editor.switchToVisualMode()
             case .switchToVisualLineMode:
                 editor.switchToVisualLineMode()
-            case .openLineBelow:
-                executeAction(.standalone(token: token, count: 1), editor: editor)
-            case .openLineAbove:
-                executeAction(.standalone(token: token, count: 1), editor: editor)
-            case .splitLine:
-                executeAction(.standalone(token: token, count: 1), editor: editor)
             case .repeatLastAction:
                 editor.repeatLastAction()
-            case .deleteToEndOfLine:
-                executeAction(.standalone(token: token, count: 1), editor: editor)
-            case .yankToEndOfLine:
-                executeAction(.standalone(token: token, count: 1), editor: editor)
-            case .deleteChar:
-                executeAction(.standalone(token: token, count: 1), editor: editor)
-            case .deleteCharBackward:
-                executeAction(.standalone(token: token, count: 1), editor: editor)
-            case .changeToEndOfLine:
-                executeAction(.standalone(token: token, count: 1), editor: editor)
-            case .paste:
-                executeAction(.standalone(token: token, count: 1), editor: editor)
-            case .pasteBefore:
+            case .openLineBelow,
+                 .openLineAbove,
+                 .splitLine,
+                 .deleteToEndOfLine,
+                 .yankToEndOfLine,
+                 .deleteChar,
+                 .deleteCharBackward,
+                 .changeToEndOfLine,
+                 .paste,
+                 .pasteBefore:
                 executeAction(.standalone(token: token, count: 1), editor: editor)
             case .requestSubmit:
                 editor.requestSubmit()
@@ -628,7 +632,7 @@ public final class EditorCommandStateMachine {
             case .screenLineEnd: editor.moveCursorToScreenLineEnd()
             case .line: editor.selectLine()
             case .goToEndOfFile: break  // Already handled above
-            case .textObject: break // Not a standalone motion
+            case .textObject: break  // Not a standalone motion
             case .repeatLastFindForward, .repeatLastFindBackward:
                 // These are resolved above, so we should not hit this case.
                 break
