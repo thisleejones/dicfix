@@ -166,6 +166,8 @@ public enum EditorCommandToken: Equatable {
     case pasteBefore  // P
     case requestSubmit
     case requestQuit
+    case undo
+    case redo
 
     case escape
     case unknown(String)
@@ -241,6 +243,7 @@ public enum EditorCommandToken: Equatable {
         if keyEvent.mods.isControl {
             switch k {
             case .j: return .splitLine
+            case .r: return .redo
             default: break
             }
         }
@@ -269,7 +272,11 @@ public enum EditorCommandToken: Equatable {
         case .d: return .delete
         case .y: return .yank
         case .c: return .change
-        case .u: return .lowercase
+        case .u:
+            if case .idle = state {
+                return .undo
+            }
+            return .lowercase
 
         // Motions
         case .w: return keyEvent.mods.isOnlyShift ? .WORDForward : .wordForward
@@ -406,6 +413,10 @@ public final class EditorCommandStateMachine {
                 editor.requestSubmit()
             case .requestQuit:
                 editor.requestQuit()
+            case .undo:
+                editor.undo()
+            case .redo:
+                editor.redo()
             default:
                 // Any other token is ignored in idle state.
                 break

@@ -39,6 +39,10 @@ open class EditorViewModel: ObservableObject {
     private(set) public var lastAction: RepeatableAction?
     private(set) public var register: String = ""
 
+    // Undo/Redo state
+    private var undoStack: [(text: String, cursorPosition: Int)] = []
+    private var redoStack: [(text: String, cursorPosition: Int)] = []
+
     // Callbacks (optional)
     public var onQuit: (() -> Void)?
     public var onSubmit: (() -> Void)?
@@ -709,6 +713,7 @@ open class EditorViewModel: ObservableObject {
     }
 
     public func openLineBelow() {
+        saveUndoState()
         let textAsNSString = text as NSString
         let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
         let insertPosition = lineRange.location + lineRange.length
@@ -718,6 +723,7 @@ open class EditorViewModel: ObservableObject {
     }
 
     public func openLineAbove() {
+        saveUndoState()
         let textAsNSString = text as NSString
         let lineRange = textAsNSString.lineRange(for: NSRange(location: cursorPosition, length: 0))
         let insertPosition = lineRange.location
@@ -727,6 +733,7 @@ open class EditorViewModel: ObservableObject {
     }
 
     public func splitLine() {
+        saveUndoState()
         let splitIndex = text.index(text.startIndex, offsetBy: cursorPosition)
         let firstPart = String(text[..<splitIndex])
         let secondPart = String(text[splitIndex...])
@@ -736,6 +743,7 @@ open class EditorViewModel: ObservableObject {
     }
 
     public func insertNewline() {
+        saveUndoState()
         let index = text.index(text.startIndex, offsetBy: cursorPosition)
         text.insert("\n", at: index)
         cursorPosition += 1
@@ -822,6 +830,8 @@ open class EditorViewModel: ObservableObject {
             return
         }
 
+        saveUndoState()
+
         // Yank the text before deleting it
         let from = text.index(text.startIndex, offsetBy: range.lowerBound)
         let to = text.index(text.startIndex, offsetBy: range.upperBound)
@@ -856,6 +866,7 @@ open class EditorViewModel: ObservableObject {
 
     public func paste() {
         guard !register.isEmpty else { return }
+        saveUndoState()
 
         // If the register contains a full line (ends with newline), paste it on the line below.
         if register.last == "\n" {
@@ -892,6 +903,8 @@ open class EditorViewModel: ObservableObject {
 
     public func pasteBefore() {
         guard !register.isEmpty else { return }
+        saveUndoState()
+        saveUndoState()
 
         // If the register contains a full line, paste it on the line above.
         if register.last == "\n" {
@@ -939,6 +952,7 @@ open class EditorViewModel: ObservableObject {
     }
 
     public func transform(range: Range<Int>, to type: TransformationType) {
+        saveUndoState()
         guard range.lowerBound >= 0,
             range.upperBound <= text.count,
             range.lowerBound < range.upperBound
@@ -965,5 +979,50 @@ open class EditorViewModel: ObservableObject {
 
         text.replaceSubrange(start..<end, with: transformedText)
         cursorPosition = range.lowerBound
+    }
+
+    // MARK: - Undo/Redo Functionality
+    
+    private func saveUndoState() {
+        let currentState = (text: text, cursorPosition: cursorPosition)
+        undoStack.append(currentState)
+        redoStack.removeAll() // A new action clears the redo stack
+    }
+
+    public func undo() {
+        guard let lastState = undoStack.popLast() else { return }
+        let currentState = (text: text, cursorPosition: cursorPosition)
+        redoStack.append(currentState)
+        
+        text = lastState.text
+        cursorPosition = lastState.cursorPosition
+    }
+
+    public func redo() {
+        guard let nextState = redoStack.popLast() else { return }
+        let currentState = (text: text, cursorPosition: cursorPosition)
+        undoStack.append(currentState)
+        
+        text = nextState.text
+        cursorPosition = nextState.cursorPosition
+    }
+}
+
+
+// MARK: - Key Event Handling
+extension EditorViewModel {
+    public func insertCharacter(_ char: String) {
+        saveUndoState()
+        let index = text.index(text.startIndex, offsetBy: cursorPosition)
+        text.insert(contentsOf: char, at: index)
+        cursorPosition += char.count
+    }
+
+    public func backspace() {
+        guard cursorPosition > 0 else { return }
+        saveUndoState()
+        let index = text.index(text.startIndex, offsetBy: cursorPosition - 1)
+        text.remove(at: index)
+        cursorPosition -= 1
     }
 }

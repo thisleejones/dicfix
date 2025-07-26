@@ -144,6 +144,16 @@ class MockEditorViewModel: EditorViewModel {
         log.append("moveCursorToCharacter(\"\(character)\", forward: \(forward), till: \(till))")
         super.moveCursorToCharacter(character, forward: forward, till: till)
     }
+
+    override func undo() {
+        log.append("undo")
+        super.undo()
+    }
+
+    override func redo() {
+        log.append("redo")
+        super.redo()
+    }
 }
 
 // MARK: - State Machine Tests
