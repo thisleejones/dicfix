@@ -211,26 +211,26 @@ public enum EditorCommandToken: Equatable {
     }
 
     static func from(keyEvent: KeyEvent, state: EditorCommandState) -> EditorCommandToken? {
-        guard let k = keyEvent.key else { return nil }
-
-        // If we are waiting for a text object selector, many keys become arguments.
-        if case .waitingForTextObjectSelector = state {
-            if let char = keyEvent.characters?.first {
-                let validSelectors = "wWbB\"'`()[]{}ps"  // p=paragraph, s=sentence
-                if validSelectors.contains(char) {
-                    return .argument(char)
-                }
-            }
-        }
-
-        // If we are waiting for a suffix, some prefixes expect a character argument.
-        if case .waitingForSuffix(_, let prefix, _) = state {
+        // If the state machine is waiting for a character argument (e.g., after 'f' or 'di'),
+        // treat any character input as an argument. This must take priority over the
+        // standard key mappings below.
+        switch state {
+        case .waitingForSuffix(_, let prefix, _):
             if case .prefix(let pchar) = prefix, "fFtT".contains(pchar) {
                 if let char = keyEvent.characters?.first {
                     return .argument(char)
                 }
             }
+        case .waitingForTextObjectSelector:
+            if let char = keyEvent.characters?.first {
+                return .argument(char)
+            }
+        default:
+            // Not a state that's waiting for a character, so fall through.
+            break
         }
+
+        guard let k = keyEvent.key else { return nil }
 
         // Digits (counts)
         if let chars = keyEvent.characters, chars.count == 1, let d = Int(chars) {
@@ -504,13 +504,14 @@ public final class EditorCommandStateMachine {
         } else {
             // Handle standalone commands that can take a count.
             switch token {
-            case .yankToEndOfLine, .deleteToEndOfLine, .changeToEndOfLine, .deleteChar, .deleteCharBackward, .paste, .pasteBefore:
+            case .yankToEndOfLine, .deleteToEndOfLine, .changeToEndOfLine, .deleteChar,
+                .deleteCharBackward, .paste, .pasteBefore:
                 executeAction(.standalone(token: token, count: count), editor: editor)
             default:
                 // Invalid sequence. Reset and re-process.
                 state = .idle
                 handleToken(token, editor: editor)
-                return // Return to avoid resetting state again below
+                return  // Return to avoid resetting state again below
             }
             state = .idle
         }
@@ -627,7 +628,7 @@ public final class EditorCommandStateMachine {
                 editor.changeToEndOfLine(count: count)
                 return
             }
-            
+
             // We only support a limited set of repeatable standalone commands.
             for _ in 0..<count {
                 switch token {
@@ -680,7 +681,7 @@ public final class EditorCommandStateMachine {
             let lineNSRange = textAsNSString.lineRange(for: NSRange(location: startPos, length: 0))
             return 0..<lineNSRange.upperBound
         default:
-            break // Fall through to the default motion handling.
+            break  // Fall through to the default motion handling.
         }
 
         // For all other motions, we execute them to find the end position.
@@ -744,6 +745,17 @@ public final class EditorCommandStateMachine {
         editor.setLastAction(.standard(op: op, motion: motion, count: count))
 
         let range = getRange(op: op, motion: motion, count: count, editor: editor)
+        // var range = getRange(op: op, motion: motion, count: count, editor: editor)
+
+        // // The 'c' (change) operator with 'f' (find) is a special case.
+        // // Unlike 'd' or 'y', it should NOT include the character found by 'f'.
+        // if case .change = op {
+        //     if case .findCharacter(_, let forward, _) = motion {
+        //         if forward && !range.isEmpty {
+        //             range = range.lowerBound..<(range.upperBound - 1)
+        //         }
+        //     }
+        // }
 
         // The cursor position after the action depends on the operator and motion.
         let finalCursorPos: Int

@@ -648,6 +648,49 @@ extension EditorCommandStateMachineTests {
     }
 }
 
+// MARK: - Symbol Handling Tests
+extension EditorCommandStateMachineTests {
+    func testFindSymbol() {
+        editor.text = "one-two-three"
+        editor.cursorPosition = 0
+
+        // Simulate "f-"
+        stateMachine.handleToken(.prefix("f"), editor: editor)
+        stateMachine.handleToken(.argument("-"), editor: editor)
+
+        XCTAssertEqual(editor.log.last, "moveCursorToCharacter(\"-\", forward: true, till: false)")
+    }
+    
+    func testDeleteTillSymbol() {
+        let realEditor = EditorViewModel()
+        realEditor.text = "one-two-three"
+        realEditor.cursorPosition = 0
+
+        // Simulate "dt-"
+        stateMachine.handleToken(.delete, editor: realEditor)
+        stateMachine.handleToken(.prefix("t"), editor: realEditor)
+        stateMachine.handleToken(.argument("-"), editor: realEditor)
+
+        XCTAssertEqual(realEditor.text, "-two-three")
+        XCTAssertEqual(realEditor.cursorPosition, 0)
+    }
+
+    func testChangeFindSymbol() {
+        let realEditor = EditorViewModel()
+        realEditor.text = "one(two)three"
+        realEditor.cursorPosition = 0
+        
+        // Simulate "cf("
+        stateMachine.handleToken(.change, editor: realEditor)
+        stateMachine.handleToken(.prefix("f"), editor: realEditor)
+        stateMachine.handleToken(.argument("("), editor: realEditor)
+        
+        XCTAssertEqual(realEditor.text, "two)three")
+        XCTAssertEqual(realEditor.cursorPosition, 0)
+        XCTAssertTrue(realEditor.mode is InsertMode)
+    }
+}
+
 // MARK: - Text Object Tests
 extension EditorCommandStateMachineTests {
     func testDeleteInnerWord() {
