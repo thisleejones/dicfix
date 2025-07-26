@@ -661,12 +661,10 @@ public final class EditorCommandStateMachine {
         // Handle special whole-document motions first.
         switch motion {
         case .goToEndOfFile:
-            // For commands like dG, the range is from the start of the current line to the end of the document.
             let textAsNSString = editor.text as NSString
             let lineNSRange = textAsNSString.lineRange(for: NSRange(location: startPos, length: 0))
             return lineNSRange.location..<editor.text.count
         case .goToFirstLine:
-            // For commands like dgg, the range is from the beginning of the document to the end of the current line.
             let textAsNSString = editor.text as NSString
             let lineNSRange = textAsNSString.lineRange(for: NSRange(location: startPos, length: 0))
             return 0..<lineNSRange.upperBound
