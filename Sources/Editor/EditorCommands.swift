@@ -82,6 +82,8 @@ public enum EditorMotion {
     case screenLineUp
     case screenLineStartNonBlank
     case screenLineEnd
+    case repeatLastFindForward
+    case repeatLastFindBackward
     case textObject(prefix: TextObjectPrefix, selector: TextObjectSelector)
 }
 
@@ -203,6 +205,8 @@ public enum EditorCommandToken: Equatable {
         case .goToFirstLine: return .goToFirstLine
         case .screenLineStartNonBlank: return .screenLineStartNonBlank
         case .screenLineEnd: return .screenLineEnd
+        case .repeatLastFindForward: return .repeatLastFindForward
+        case .repeatLastFindBackward: return .repeatLastFindBackward
         default: return nil
         }
     }
@@ -309,7 +313,7 @@ public enum EditorCommandToken: Equatable {
         case .v: return .switchToVisualMode
         case .x: return .deleteChar
         case .p: return .paste
-        case `repeat`: return .repeatLastAction
+        case .`repeat`: return .repeatLastAction
         case .semicolon: return .repeatLastFindForward
         case .comma: return .repeatLastFindBackward
         case .enter, .keypadEnter: return .requestSubmit
@@ -400,10 +404,6 @@ public final class EditorCommandStateMachine {
                 executeAction(.standalone(token: token, count: 1), editor: editor)
             case .repeatLastAction:
                 editor.repeatLastAction()
-            case .repeatLastFindForward:
-                executeRepeatFind(forward: true, editor: editor)
-            case .repeatLastFindBackward:
-                executeRepeatFind(forward: false, editor: editor)
             case .deleteToEndOfLine:
                 executeAction(.standalone(token: token, count: 1), editor: editor)
             case .yankToEndOfLine:
@@ -592,8 +592,22 @@ public final class EditorCommandStateMachine {
             return
         }
 
+        // Resolve the actual motion if it's a repeat command.
+        var motionToExecute = motion
+        if case .repeatLastFindForward = motion {
+            guard let lastFind = lastFindCharacterMotion else { return }
+            motionToExecute = lastFind
+        } else if case .repeatLastFindBackward = motion {
+            guard var lastFind = lastFindCharacterMotion else { return }
+            // Invert the direction for ','
+            if case .findCharacter(let char, let forward, let till) = lastFind {
+                lastFind = .findCharacter(char: char, forward: !forward, till: till)
+            }
+            motionToExecute = lastFind
+        }
+
         for _ in 0..<count {
-            switch motion {
+            switch motionToExecute {
             case .findCharacter(let char, let forward, let till):
                 editor.moveCursorToCharacter(char, forward: forward, till: till)
             case .wordForward: editor.moveCursorForwardByWord(isWORD: false)
@@ -613,10 +627,10 @@ public final class EditorCommandStateMachine {
             case .screenLineStartNonBlank: editor.moveCursorToScreenLineStartNonBlank()
             case .screenLineEnd: editor.moveCursorToScreenLineEnd()
             case .line: editor.selectLine()
-            case .goToEndOfFile: break  // Already handled above'
-            case .textObject(_, _):
-                // A text object is not a standalone motion. It only makes sense with an operator.
-                // If we get here, it's a no-op.
+            case .goToEndOfFile: break  // Already handled above
+            case .textObject: break // Not a standalone motion
+            case .repeatLastFindForward, .repeatLastFindBackward:
+                // These are resolved above, so we should not hit this case.
                 break
             }
         }
@@ -674,8 +688,22 @@ public final class EditorCommandStateMachine {
     ) -> Range<Int> {
         let startPos = editor.cursorPosition
 
+        // Resolve the actual motion if it's a repeat command.
+        var motionToExecute = motion
+        if case .repeatLastFindForward = motion {
+            guard let lastFind = lastFindCharacterMotion else { return startPos..<startPos }
+            motionToExecute = lastFind
+        } else if case .repeatLastFindBackward = motion {
+            guard var lastFind = lastFindCharacterMotion else { return startPos..<startPos }
+            // Invert the direction for ','
+            if case .findCharacter(let char, let forward, let till) = lastFind {
+                lastFind = .findCharacter(char: char, forward: !forward, till: till)
+            }
+            motionToExecute = lastFind
+        }
+
         // For text objects, the range is calculated without moving the cursor.
-        if case .textObject(let prefix, let selector) = motion {
+        if case .textObject(let prefix, let selector) = motionToExecute {
             if let range = editor.range(for: selector, at: startPos, inner: prefix == .inner) {
                 return range
             }
@@ -683,7 +711,7 @@ public final class EditorCommandStateMachine {
         }
 
         // Handle special whole-document motions first.
-        switch motion {
+        switch motionToExecute {
         case .goToEndOfFile:
             let textAsNSString = editor.text as NSString
             let lineNSRange = textAsNSString.lineRange(for: NSRange(location: startPos, length: 0))
@@ -697,7 +725,7 @@ public final class EditorCommandStateMachine {
         }
 
         // For all other motions, we execute them to find the end position.
-        executeMotion(motion, count: count, editor: editor)
+        executeMotion(motionToExecute, count: count, editor: editor)
         let endPos = editor.cursorPosition
 
         // IMPORTANT: getRange should not have the side effect of permanently moving the cursor.
@@ -706,7 +734,7 @@ public final class EditorCommandStateMachine {
         editor.cursorPosition = startPos
 
         // Now, calculate the range based on the motion type and start/end positions.
-        switch motion {
+        switch motionToExecute {
         case .findCharacter(_, let forward, let till):
             if forward {
                 return startPos..<endPos + 1
@@ -804,19 +832,5 @@ public final class EditorCommandStateMachine {
         }
 
         state = .idle
-    }
-
-    private func executeRepeatFind(forward: Bool, editor: EditorViewModel) {
-        guard var lastFind = lastFindCharacterMotion else { return }
-
-        // If we are repeating backward (,), we need to invert the direction
-        // of the original find command.
-        if !forward {
-            if case .findCharacter(let char, let originalForward, let till) = lastFind {
-                lastFind = .findCharacter(char: char, forward: !originalForward, till: till)
-            }
-        }
-
-        executeMotion(lastFind, count: 1, editor: editor)
     }
 }
