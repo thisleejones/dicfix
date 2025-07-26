@@ -459,7 +459,7 @@ extension EditorCommandStateMachineTests {
         stateMachine.handleToken(.prefix("g"), editor: editor)
 
         XCTAssertEqual(editor.text, "line 3")
-        XCTAssertEqual(editor.cursorPosition, 4)
+        XCTAssertEqual(editor.cursorPosition, 0)
     }
 
     // MARK: dG (Delete to End of File)
@@ -477,7 +477,81 @@ extension EditorCommandStateMachineTests {
         stateMachine.handleToken(.goToEndOfFile, editor: editor)
 
         XCTAssertEqual(editor.text, "line 1\n")
-        XCTAssertEqual(editor.cursorPosition, 4)
+        XCTAssertEqual(editor.cursorPosition, 7)
+    }
+
+    // MARK: ygg (Yank to Beginning of File)
+    func testYankToBeginningOfFile() {
+        editor.text = """
+            line 1
+            line 2
+            line 3
+            """
+        editor.cursorPosition = 10 // Cursor on 'e' of 'line 2'
+
+        // ygg
+        stateMachine.handleToken(.yank, editor: editor)
+        stateMachine.handleToken(.prefix("g"), editor: editor)
+        stateMachine.handleToken(.prefix("g"), editor: editor)
+
+        XCTAssertEqual(editor.register, "line 1\nline 2\n")
+        XCTAssertEqual(editor.text, "line 1\nline 2\nline 3") // Text should be unchanged
+        XCTAssertEqual(editor.cursorPosition, 10) // Cursor should not move
+    }
+
+    // MARK: yG (Yank to End of File)
+    func testYankToEndOfFileWithG() {
+        editor.text = """
+            line 1
+            line 2
+            line 3
+            """
+        editor.cursorPosition = 10 // Cursor on 'e' of 'line 2'
+
+        // yG
+        stateMachine.handleToken(.yank, editor: editor)
+        stateMachine.handleToken(.goToEndOfFile, editor: editor)
+
+        XCTAssertEqual(editor.register, "line 2\nline 3")
+        XCTAssertEqual(editor.text, "line 1\nline 2\nline 3") // Text should be unchanged
+        XCTAssertEqual(editor.cursorPosition, 10) // Cursor should not move
+    }
+
+    // MARK: cgg (Change to Beginning of File)
+    func testChangeToBeginningOfFile() {
+        editor.text = """
+            line 1
+            line 2
+            line 3
+            """
+        editor.cursorPosition = 10 // Cursor on 'e' of 'line 2'
+
+        // cgg
+        stateMachine.handleToken(.change, editor: editor)
+        stateMachine.handleToken(.prefix("g"), editor: editor)
+        stateMachine.handleToken(.prefix("g"), editor: editor)
+
+        XCTAssertEqual(editor.text, "line 3")
+        XCTAssertEqual(editor.cursorPosition, 0)
+        XCTAssertTrue(editor.log.contains("switchToInsertMode"))
+    }
+
+    // MARK: cG (Change to End of File)
+    func testChangeToEndOfFileWithG() {
+        editor.text = """
+            line 1
+            line 2
+            line 3
+            """
+        editor.cursorPosition = 10 // Cursor on 'e' of 'line 2'
+
+        // cG
+        stateMachine.handleToken(.change, editor: editor)
+        stateMachine.handleToken(.goToEndOfFile, editor: editor)
+
+        XCTAssertEqual(editor.text, "line 1\n")
+        XCTAssertEqual(editor.cursorPosition, 7)
+        XCTAssertTrue(editor.log.contains("switchToInsertMode"))
     }
 }
 
