@@ -162,6 +162,8 @@ public enum EditorCommandToken: Equatable {
     case deleteCharBackward  // X
     case changeToEndOfLine  // C
     case repeatLastAction  // .
+    case repeatLastFindForward  // ;
+    case repeatLastFindBackward  // ,
     case paste  // p
     case pasteBefore  // P
     case requestSubmit
@@ -307,7 +309,9 @@ public enum EditorCommandToken: Equatable {
         case .v: return .switchToVisualMode
         case .x: return .deleteChar
         case .p: return .paste
-        case .`repeat`: return .repeatLastAction
+        case `repeat`: return .repeatLastAction
+        case .semicolon: return .repeatLastFindForward
+        case .comma: return .repeatLastFindBackward
         case .enter, .keypadEnter: return .requestSubmit
         case .escape: return .requestQuit  // In normal mode, escape is for quitting.
         case .tilde: return .swapCase
@@ -324,6 +328,7 @@ public enum EditorCommandToken: Equatable {
 
 public final class EditorCommandStateMachine {
     public private(set) var state: EditorCommandState = .idle
+    private var lastFindCharacterMotion: EditorMotion?
 
     public init() {}
 
@@ -395,6 +400,10 @@ public final class EditorCommandStateMachine {
                 executeAction(.standalone(token: token, count: 1), editor: editor)
             case .repeatLastAction:
                 editor.repeatLastAction()
+            case .repeatLastFindForward:
+                executeRepeatFind(forward: true, editor: editor)
+            case .repeatLastFindBackward:
+                executeRepeatFind(forward: false, editor: editor)
             case .deleteToEndOfLine:
                 executeAction(.standalone(token: token, count: 1), editor: editor)
             case .yankToEndOfLine:
@@ -478,6 +487,9 @@ public final class EditorCommandStateMachine {
             } else {
                 // Standalone motion, e.g., fc
                 executeMotion(motion, count: count, editor: editor)
+            }
+            if case .findCharacter = motion {
+                lastFindCharacterMotion = motion
             }
             handled = true
         }
@@ -792,5 +804,19 @@ public final class EditorCommandStateMachine {
         }
 
         state = .idle
+    }
+
+    private func executeRepeatFind(forward: Bool, editor: EditorViewModel) {
+        guard var lastFind = lastFindCharacterMotion else { return }
+
+        // If we are repeating backward (,), we need to invert the direction
+        // of the original find command.
+        if !forward {
+            if case .findCharacter(let char, let originalForward, let till) = lastFind {
+                lastFind = .findCharacter(char: char, forward: !originalForward, till: till)
+            }
+        }
+
+        executeMotion(lastFind, count: 1, editor: editor)
     }
 }
